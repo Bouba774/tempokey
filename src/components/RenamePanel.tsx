@@ -495,18 +495,23 @@ function ScopeOption({
   );
 }
 
-function PreviewRow({ item }: { item: RenamePreviewItem }) {
+function PreviewRow({ item, position }: { item: RenamePreviewItem; position: number }) {
   return (
-    <li className="px-3 py-2 text-xs">
-      <div className="truncate text-muted-foreground" title={item.oldName}>
-        {item.oldName}
-      </div>
-      <div
-        className={`truncate tabular-nums ${item.unchanged ? "text-muted-foreground" : "text-foreground font-medium"}`}
-        title={item.newName}
-      >
-        → {item.newName}
-        {item.unchanged && <span className="ml-2 text-[10px] uppercase text-muted-foreground">inchangé</span>}
+    <li className="flex gap-3 px-3 py-2 text-xs">
+      <span className="w-10 shrink-0 text-right font-semibold tabular-nums text-[var(--primary-glow)]">
+        {String(position).padStart(3, "0")}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-muted-foreground" title={item.oldName}>
+          {item.oldName}
+        </div>
+        <div
+          className={`truncate tabular-nums ${item.unchanged ? "text-muted-foreground" : "text-foreground font-medium"}`}
+          title={item.newName}
+        >
+          → {item.newName}
+          {item.unchanged && <span className="ml-2 text-[10px] uppercase text-muted-foreground">inchangé</span>}
+        </div>
       </div>
     </li>
   );
