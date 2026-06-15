@@ -1,5 +1,7 @@
 import { useMemo } from "react";
+import { toast } from "sonner";
 import { useLibraryStore, type Track } from "@/lib/library-store";
+import { useOrderingStore, type OrderSource } from "@/lib/ordering-store";
 import {
   energyLabel,
   energyLevel,
@@ -7,7 +9,7 @@ import {
   getSuggestions,
   type Suggestion,
 } from "@/lib/harmonic";
-import { Disc3, Sparkles, Waves, Flame, ArrowRight, X } from "lucide-react";
+import { Disc3, Sparkles, Waves, Flame, ArrowRight, X, CheckCheck } from "lucide-react";
 
 function EnergyPill({ track }: { track: Pick<Track, "bpm" | "camelot"> }) {
   const level = energyLevel(track);
