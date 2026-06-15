@@ -28,8 +28,8 @@ function SuggestionRow({ s, source }: { s: Suggestion; source: Track }) {
   const bpmDelta =
     source.bpm && s.track.bpm ? s.track.bpm - source.bpm : null;
   return (
-    <li className="flex items-center gap-3 rounded-lg border border-border bg-[var(--surface-elevated)] px-3 py-2">
-      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-[var(--primary)]/15 text-[11px] font-semibold text-[var(--primary-glow)] tabular-nums">
+    <li className="group flex items-center gap-3 rounded-lg border border-border bg-[var(--surface-elevated)] px-3 py-2 transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--accent)]/5">
+      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-[var(--accent)]/15 text-[11px] font-semibold text-[var(--accent)] tabular-nums ring-1 ring-[var(--accent)]/25">
         {s.track.camelot ?? "—"}
       </div>
       <div className="min-w-0 flex-1">
