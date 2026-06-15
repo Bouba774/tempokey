@@ -9,7 +9,33 @@ import {
   getSuggestions,
   type Suggestion,
 } from "@/lib/harmonic";
-import { Disc3, Sparkles, Waves, Flame, ArrowRight, X, CheckCheck } from "lucide-react";
+import { Disc3, Sparkles, Waves, Flame, ArrowRight, X, CheckCheck, Play, Pause } from "lucide-react";
+import { usePlayerStore } from "@/lib/audio/player-store";
+
+function PlayBtn({ track }: { track: Track }) {
+  const isCurrent = usePlayerStore((s) => s.currentId === track.id);
+  const isPlaying = usePlayerStore((s) => s.isPlaying && isCurrent);
+  const play = usePlayerStore((s) => s.play);
+  const toggle = usePlayerStore((s) => s.toggle);
+  return (
+    <button
+      aria-label={isPlaying ? "Pause" : "Pré-écouter"}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (isCurrent) toggle();
+        else void play(track);
+      }}
+      className={`grid h-7 w-7 shrink-0 place-items-center rounded-full transition-transform active:scale-95 ${
+        isCurrent
+          ? "text-[var(--primary-foreground)]"
+          : "bg-[var(--surface-elevated)] text-[var(--primary-glow)] hover:bg-[var(--primary)]/20"
+      }`}
+      style={isCurrent ? { background: "var(--gradient-primary)" } : undefined}
+    >
+      {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3 translate-x-[1px]" />}
+    </button>
+  );
+}
 
 function EnergyPill({ track }: { track: Pick<Track, "bpm" | "camelot"> }) {
   const level = energyLevel(track);
@@ -51,6 +77,7 @@ function SuggestionRow({ s, source }: { s: Suggestion; source: Track }) {
       <div className="text-[10px] text-muted-foreground tabular-nums">
         {Math.round(s.score)}
       </div>
+      <PlayBtn track={s.track} />
     </li>
   );
 }
