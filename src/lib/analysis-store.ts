@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { analyzeFile, formatDuration } from "./audio/analyzer";
-import { useLibraryStore } from "./library-store";
+import { useLibraryStore, type Track } from "./library-store";
 import { invalidateHarmonicCache } from "./harmonic";
 import { invalidateSetCache } from "./setbuilder";
 
@@ -13,6 +13,8 @@ export interface AnalysisLogEntry {
   ok: boolean;
   bpm: number | null;
   camelot: string | null;
+  confidence: number | null;
+  suspect: boolean;
   message?: string;
   at: number;
 }
@@ -26,10 +28,132 @@ interface AnalysisState {
   currentIds: Set<string>;
   log: AnalysisLogEntry[];
   abort: boolean;
+  force: boolean;
+  scope: "pending" | "ids" | "all";
+  scopeIds: Set<string>;
 
   start: () => Promise<void>;
+  reanalyzeIds: (ids: string[]) => Promise<void>;
+  reanalyzeAll: () => Promise<void>;
   stop: () => void;
   reset: () => void;
+}
+
+function applyAnalysisResult(
+  trackId: string,
+  res: Awaited<ReturnType<typeof analyzeFile>>,
+) {
+  const lib = useLibraryStore.getState().library;
+  const t = lib?.tracks.find((x) => x.id === trackId);
+  if (!t) return;
+  const wasLockedBpm = t.bpmLocked === true && t.bpm != null;
+  const wasLockedKey = t.keyLocked === true && t.camelot != null;
+
+  const detected: NonNullable<Track["detected"]> = {
+    bpm: res.bpm,
+    key: res.key,
+    camelot: res.camelot,
+    bpmConfidence: res.bpmConfidence,
+    keyConfidence: res.keyConfidence,
+    suspect: res.suspect,
+    detectedAt: res.analyzedAt,
+  };
+
+  const patch: Partial<Track> = {
+    fileHash: res.fileHash,
+    durationSec: res.durationSec,
+    duration: formatDuration(res.durationSec),
+    analyzed: true,
+    status: "done",
+    error: null,
+    detected,
+    suspect: res.suspect,
+  };
+
+  if (!wasLockedBpm) {
+    patch.bpm = res.bpm;
+    patch.bpmConfidence = res.bpmConfidence;
+  }
+  if (!wasLockedKey) {
+    patch.key = res.key;
+    patch.camelot = res.camelot;
+    patch.keyConfidence = res.keyConfidence;
+  }
+
+  useLibraryStore.getState().updateTrack(trackId, patch);
+}
+
+async function runQueue(
+  queue: Track[],
+  setState: (p: Partial<AnalysisState>) => void,
+  getState: () => AnalysisState,
+  force: boolean,
+) {
+  let cursor = 0;
+  const next = (): Track | null => {
+    if (getState().abort) return null;
+    if (cursor >= queue.length) return null;
+    return queue[cursor++];
+  };
+
+  const worker = async () => {
+    for (;;) {
+      const track = next();
+      if (!track) return;
+      const file = useLibraryStore.getState().getFile(track.id);
+      if (!file) continue;
+
+      useLibraryStore.getState().updateTrack(track.id, { status: "analyzing" });
+      setState({ currentIds: new Set([...getState().currentIds, track.id]) });
+
+      try {
+        const res = await analyzeFile(file, { force });
+        applyAnalysisResult(track.id, res);
+        pushLog({
+          id: track.id,
+          title: track.title,
+          ok: true,
+          bpm: res.bpm,
+          camelot: res.camelot,
+          confidence: res.bpmConfidence,
+          suspect: res.suspect,
+          at: Date.now(),
+        });
+        setState({ done: getState().done + 1 });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Erreur d'analyse";
+        useLibraryStore.getState().updateTrack(track.id, {
+          status: "error",
+          error: message,
+          analyzed: false,
+        });
+        pushLog({
+          id: track.id,
+          title: track.title,
+          ok: false,
+          bpm: null,
+          camelot: null,
+          confidence: null,
+          suspect: true,
+          message,
+          at: Date.now(),
+        });
+        setState({ done: getState().done + 1, errors: getState().errors + 1 });
+      } finally {
+        const cur = new Set(getState().currentIds);
+        cur.delete(track.id);
+        setState({ currentIds: cur });
+        invalidateHarmonicCache();
+        invalidateSetCache();
+      }
+    }
+  };
+
+  const workers = Array.from(
+    { length: Math.min(CONCURRENCY, queue.length) },
+    () => worker(),
+  );
+  await Promise.all(workers);
 }
 
 export const useAnalysisStore = create<AnalysisState>((set, get) => ({
@@ -41,17 +165,18 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
   currentIds: new Set(),
   log: [],
   abort: false,
+  force: false,
+  scope: "pending",
+  scopeIds: new Set(),
 
   start: async () => {
     if (get().running) return;
     const lib = useLibraryStore.getState().library;
     if (!lib) return;
-
     const queue = lib.tracks.filter(
       (t) => t.status === "pending" && !!useLibraryStore.getState().getFile(t.id),
     );
     if (queue.length === 0) return;
-
     set({
       running: true,
       total: queue.length,
@@ -60,78 +185,49 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
       startedAt: Date.now(),
       currentIds: new Set(),
       abort: false,
+      force: false,
+      scope: "pending",
+      scopeIds: new Set(),
     });
-
-    let cursor = 0;
-    const next = (): (typeof queue)[number] | null => {
-      if (get().abort) return null;
-      if (cursor >= queue.length) return null;
-      return queue[cursor++];
-    };
-
-    const worker = async () => {
-      for (;;) {
-        const track = next();
-        if (!track) return;
-        const file = useLibraryStore.getState().getFile(track.id);
-        if (!file) continue;
-
-        useLibraryStore.getState().updateTrack(track.id, { status: "analyzing" });
-        set({ currentIds: new Set([...get().currentIds, track.id]) });
-
-        try {
-          const res = await analyzeFile(file);
-          useLibraryStore.getState().updateTrack(track.id, {
-            fileHash: res.fileHash,
-            bpm: res.bpm,
-            key: res.key,
-            camelot: res.camelot,
-            durationSec: res.durationSec,
-            duration: formatDuration(res.durationSec),
-            analyzed: true,
-            status: "done",
-            error: null,
-          });
-          pushLog({
-            id: track.id,
-            title: track.title,
-            ok: true,
-            bpm: res.bpm,
-            camelot: res.camelot,
-            at: Date.now(),
-          });
-          set({ done: get().done + 1 });
-        } catch (e) {
-          const message = e instanceof Error ? e.message : "Erreur d'analyse";
-          useLibraryStore.getState().updateTrack(track.id, {
-            status: "error",
-            error: message,
-            analyzed: false,
-          });
-          pushLog({
-            id: track.id,
-            title: track.title,
-            ok: false,
-            bpm: null,
-            camelot: null,
-            message,
-            at: Date.now(),
-          });
-          set({ done: get().done + 1, errors: get().errors + 1 });
-        } finally {
-          const cur = new Set(get().currentIds);
-          cur.delete(track.id);
-          set({ currentIds: cur });
-          invalidateHarmonicCache();
-          invalidateSetCache();
-        }
-      }
-    };
-
-    const workers = Array.from({ length: Math.min(CONCURRENCY, queue.length) }, () => worker());
-    await Promise.all(workers);
+    await runQueue(queue, (p) => set(p), get, false);
     await useLibraryStore.getState().flush();
     set({ running: false, currentIds: new Set() });
+  },
+
+  reanalyzeIds: async (ids: string[]) => {
+    if (get().running) return;
+    const lib = useLibraryStore.getState().library;
+    if (!lib) return;
+    const idSet = new Set(ids);
+    const queue = lib.tracks.filter(
+      (t) => idSet.has(t.id) && !!useLibraryStore.getState().getFile(t.id),
+    );
+    if (queue.length === 0) return;
+    // Reset status so the UI shows progress; do NOT clear locked fields.
+    for (const t of queue) {
+      useLibraryStore.getState().updateTrack(t.id, { status: "pending", error: null });
+    }
+    set({
+      running: true,
+      total: queue.length,
+      done: 0,
+      errors: 0,
+      startedAt: Date.now(),
+      currentIds: new Set(),
+      abort: false,
+      force: true,
+      scope: "ids",
+      scopeIds: idSet,
+    });
+    await runQueue(queue, (p) => set(p), get, true);
+    await useLibraryStore.getState().flush();
+    set({ running: false, currentIds: new Set() });
+  },
+
+  reanalyzeAll: async () => {
+    const lib = useLibraryStore.getState().library;
+    if (!lib) return;
+    await get().reanalyzeIds(lib.tracks.map((t) => t.id));
   },
 
   stop: () => {
