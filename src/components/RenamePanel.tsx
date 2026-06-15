@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
   CheckCheck,
   ChevronRight,
@@ -98,8 +99,15 @@ export function RenamePanel() {
       const res = await applyRename(template, preview.items, (p) => setProgress(p));
       setResult({ applied: res.applied.length, failed: res.failed.length, operationId: res.operationId });
       setStep("done");
+      if (res.failed.length === 0) {
+        toast.success(`${res.applied.length} fichier${res.applied.length > 1 ? "s" : ""} renommé${res.applied.length > 1 ? "s" : ""}`);
+      } else {
+        toast.warning(`${res.applied.length} renommés · ${res.failed.length} échecs`);
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur inconnue");
+      const msg = e instanceof Error ? e.message : "Erreur inconnue";
+      setError(msg);
+      toast.error("Renommage interrompu", { description: msg });
       setStep("preview");
     } finally {
       setProgress(null);
@@ -113,8 +121,11 @@ export function RenamePanel() {
       await undoOperation(opId);
       const list = await loadHistory();
       setHistory(list.filter((o) => o.libraryId === library?.id));
+      toast.success("Renommage annulé");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur d'annulation");
+      const msg = e instanceof Error ? e.message : "Erreur d'annulation";
+      setError(msg);
+      toast.error("Annulation impossible", { description: msg });
     } finally {
       setUndoBusy(null);
     }
