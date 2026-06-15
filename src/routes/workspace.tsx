@@ -73,7 +73,7 @@ function Workspace() {
           );
         })}
       </div>
-      <div className="flex flex-1 flex-col min-h-0">
+      <div key={tab} className="flex flex-1 flex-col min-h-0 animate-in fade-in-50 duration-200">
         {tab === "library" && <TrackList />}
         {tab === "analysis" && <AnalysisPanel />}
         {tab === "duplicates" && <DuplicatesPanel />}
