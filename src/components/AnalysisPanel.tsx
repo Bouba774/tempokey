@@ -1,16 +1,27 @@
 import { useEffect, useState } from "react";
 import { useLibraryStore } from "@/lib/library-store";
 import { useAnalysisStore, formatETA } from "@/lib/analysis-store";
-import { Activity, Play, Square, AlertTriangle, Disc3, ListOrdered } from "lucide-react";
+import {
+  Activity,
+  Play,
+  Square,
+  AlertTriangle,
+  Disc3,
+  ListOrdered,
+  RefreshCw,
+} from "lucide-react";
 import { HarmonicMixing } from "./HarmonicMixing";
 import { SetBuilder } from "./SetBuilder";
+import { confidenceLabel, confidenceTone } from "@/lib/corrections";
 
 export function AnalysisPanel() {
   const library = useLibraryStore((s) => s.library);
+  const selectedIds = useLibraryStore((s) => s.selectedIds);
   const tracks = library?.tracks ?? [];
   const total = tracks.length;
   const analyzed = tracks.filter((t) => t.analyzed).length;
   const errors = tracks.filter((t) => t.status === "error").length;
+  const suspects = tracks.filter((t) => t.suspect && t.analyzed).length;
   const remaining = total - analyzed - errors;
   const pct = total === 0 ? 0 : Math.round(((analyzed + errors) / total) * 100);
 
@@ -18,6 +29,8 @@ export function AnalysisPanel() {
   const log = useAnalysisStore((s) => s.log);
   const start = useAnalysisStore((s) => s.start);
   const stop = useAnalysisStore((s) => s.stop);
+  const reanalyzeIds = useAnalysisStore((s) => s.reanalyzeIds);
+  const reanalyzeAll = useAnalysisStore((s) => s.reanalyzeAll);
 
   // Live ETA tick
   const [, setTick] = useState(0);
