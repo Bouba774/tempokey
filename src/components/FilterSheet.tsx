@@ -2,19 +2,21 @@ import { X, RotateCcw } from "lucide-react";
 import {
   CAMELOT_CODES,
   type LibraryFilters,
-  type SortKey,
   type DurationBucket,
   type AnalysisFilter,
   DEFAULT_FILTERS,
 } from "@/lib/library-filters";
+import {
+  useOrderingStore,
+  DEFAULT_ORDER_LABEL,
+  type OrderSource,
+} from "@/lib/ordering-store";
 
 interface Props {
   open: boolean;
   onClose: () => void;
   filters: LibraryFilters;
   onChange: (next: LibraryFilters) => void;
-  sort: SortKey;
-  onSortChange: (s: SortKey) => void;
 }
 
 const DURATIONS: { id: DurationBucket; label: string }[] = [
@@ -30,23 +32,21 @@ const ANALYSIS: { id: AnalysisFilter; label: string }[] = [
   { id: "error", label: "Erreurs" },
 ];
 
-const SORTS: { id: SortKey; label: string }[] = [
-  { id: "import", label: "Ordre import" },
+// Sort options that can be promoted to the global active order.
+const SORTS: { id: OrderSource; label: string }[] = [
+  { id: "import", label: DEFAULT_ORDER_LABEL.import },
   { id: "bpm-asc", label: "BPM ↑" },
   { id: "bpm-desc", label: "BPM ↓" },
-  { id: "camelot", label: "Camelot" },
-  { id: "duration", label: "Durée" },
-  { id: "title", label: "Titre" },
+  { id: "camelot", label: DEFAULT_ORDER_LABEL.camelot },
+  { id: "duration", label: DEFAULT_ORDER_LABEL.duration },
+  { id: "title", label: DEFAULT_ORDER_LABEL.title },
+  { id: "energy", label: DEFAULT_ORDER_LABEL.energy },
 ];
 
-export function FilterSheet({
-  open,
-  onClose,
-  filters,
-  onChange,
-  sort,
-  onSortChange,
-}: Props) {
+export function FilterSheet({ open, onClose, filters, onChange }: Props) {
+  const active = useOrderingStore((s) => s.active);
+  const setOrder = useOrderingStore((s) => s.setOrder);
+
   if (!open) return null;
 
   function toggleCamelot(code: string) {
@@ -62,6 +62,8 @@ export function FilterSheet({
     onChange({ ...filters, durations: next });
   }
 
+  const activeSource = active?.source ?? "import";
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm">
       <button aria-label="Fermer" onClick={onClose} className="flex-1" />
@@ -72,7 +74,7 @@ export function FilterSheet({
             <button
               onClick={() => {
                 onChange({ ...DEFAULT_FILTERS, camelot: new Set(), durations: new Set() });
-                onSortChange("import");
+                setOrder("import");
               }}
               className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent"
             >
@@ -114,13 +116,13 @@ export function FilterSheet({
             </h3>
             <div className="grid grid-cols-6 gap-1.5">
               {CAMELOT_CODES.map((c) => {
-                const active = filters.camelot.has(c);
+                const a = filters.camelot.has(c);
                 return (
                   <button
                     key={c}
                     onClick={() => toggleCamelot(c)}
                     className={`h-9 rounded-lg border text-xs font-semibold tabular-nums transition-colors ${
-                      active
+                      a
                         ? "border-[var(--primary)] bg-[var(--primary)]/15 text-[var(--primary-glow)]"
                         : "border-border bg-[var(--surface-elevated)] text-muted-foreground hover:text-foreground"
                     }`}
@@ -156,12 +158,15 @@ export function FilterSheet({
 
           <section>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Trier par
+              Ordre actif de la bibliothèque
             </h3>
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              Appliqué à la Bibliothèque, l'Analyse et le Renommage.
+            </p>
             <ChipRow
               items={SORTS}
-              isActive={(s) => sort === s.id}
-              onToggle={(s) => onSortChange(s.id)}
+              isActive={(s) => activeSource === s.id}
+              onToggle={(s) => setOrder(s.id)}
             />
           </section>
         </div>
@@ -216,13 +221,13 @@ function ChipRow<T extends { id: string; label: string }>({
   return (
     <div className="flex flex-wrap gap-1.5">
       {items.map((it) => {
-        const active = isActive(it);
+        const a = isActive(it);
         return (
           <button
             key={it.id}
             onClick={() => onToggle(it)}
             className={`h-9 rounded-full border px-3 text-xs font-medium transition-colors ${
-              active
+              a
                 ? "border-[var(--primary)] bg-[var(--primary)]/15 text-[var(--primary-glow)]"
                 : "border-border bg-[var(--surface-elevated)] text-muted-foreground hover:text-foreground"
             }`}
