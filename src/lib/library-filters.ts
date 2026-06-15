@@ -79,17 +79,16 @@ function durationBucket(sec: number | null): DurationBucket | null {
   return "long";
 }
 
-export function applyFiltersAndSort(
+/** Apply search + filters without changing order (order is owned by the ordering store). */
+export function applyFiltersOnly(
   tracks: Track[],
   query: string,
   filters: LibraryFilters,
-  sort: SortKey,
 ): Track[] {
   const q = parseQuery(query);
   const out: Track[] = [];
 
   for (const t of tracks) {
-    // Search
     if (q.bpmExact != null) {
       if (t.bpm == null || Math.abs(t.bpm - q.bpmExact) > 1) continue;
     }
@@ -104,7 +103,6 @@ export function applyFiltersAndSort(
       if (!q.text.every((w) => hay.includes(w))) continue;
     }
 
-    // Filters
     if (filters.bpmMin != null && (t.bpm == null || t.bpm < filters.bpmMin)) continue;
     if (filters.bpmMax != null && (t.bpm == null || t.bpm > filters.bpmMax)) continue;
     if (filters.camelot.size > 0) {
@@ -128,31 +126,37 @@ export function applyFiltersAndSort(
 
     out.push(t);
   }
+  return out;
+}
 
-  // Sort
+/** @deprecated — use applyFiltersOnly + ordering-store. Kept for backwards compat. */
+export function applyFiltersAndSort(
+  tracks: Track[],
+  query: string,
+  filters: LibraryFilters,
+  sort: SortKey,
+): Track[] {
+  const filtered = applyFiltersOnly(tracks, query, filters);
   switch (sort) {
     case "bpm-asc":
-      out.sort((a, b) => (a.bpm ?? Infinity) - (b.bpm ?? Infinity));
-      break;
+      return filtered.sort((a, b) => (a.bpm ?? Infinity) - (b.bpm ?? Infinity));
     case "bpm-desc":
-      out.sort((a, b) => (b.bpm ?? -Infinity) - (a.bpm ?? -Infinity));
-      break;
+      return filtered.sort((a, b) => (b.bpm ?? -Infinity) - (a.bpm ?? -Infinity));
     case "camelot":
-      out.sort((a, b) => {
+      return filtered.sort((a, b) => {
         const ai = a.camelot ? CAMELOT_ORDER.get(a.camelot.toUpperCase()) ?? 999 : 999;
         const bi = b.camelot ? CAMELOT_ORDER.get(b.camelot.toUpperCase()) ?? 999 : 999;
         return ai - bi;
       });
-      break;
     case "duration":
-      out.sort((a, b) => (a.durationSec ?? Infinity) - (b.durationSec ?? Infinity));
-      break;
+      return filtered.sort((a, b) => (a.durationSec ?? Infinity) - (b.durationSec ?? Infinity));
     case "title":
-      out.sort((a, b) => a.title.localeCompare(b.title));
-      break;
+      return filtered.sort((a, b) => a.title.localeCompare(b.title));
+    default:
+      return filtered;
   }
-  return out;
 }
+
 
 export function filtersActiveCount(f: LibraryFilters): number {
   let n = 0;
