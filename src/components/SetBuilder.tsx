@@ -41,6 +41,27 @@ function energyDot(t: Track) {
   return <span className={`h-1.5 w-1.5 rounded-full ${c}`} />;
 }
 
+function SetPlayBtn({ track }: { track: Track }) {
+  const isCurrent = usePlayerStore((s) => s.currentId === track.id);
+  const isPlaying = usePlayerStore((s) => s.isPlaying && isCurrent);
+  const play = usePlayerStore((s) => s.play);
+  const toggle = usePlayerStore((s) => s.toggle);
+  return (
+    <button
+      aria-label={isPlaying ? "Pause" : "Pré-écouter"}
+      onClick={() => (isCurrent ? toggle() : void play(track))}
+      className={`grid h-7 w-7 shrink-0 place-items-center rounded-full transition-transform active:scale-95 ${
+        isCurrent
+          ? "text-[var(--primary-foreground)]"
+          : "bg-[var(--surface-elevated)] text-[var(--primary-glow)] hover:bg-[var(--primary)]/20"
+      }`}
+      style={isCurrent ? { background: "var(--gradient-primary)" } : undefined}
+    >
+      {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3 translate-x-[1px]" />}
+    </button>
+  );
+}
+
 export function SetBuilder() {
   const library = useLibraryStore((s) => s.library);
   const tracks = library?.tracks ?? [];
