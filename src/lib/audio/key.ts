@@ -16,6 +16,7 @@ export interface KeyResult {
   note: string; // e.g. "A"
   mode: "major" | "minor";
   label: string; // e.g. "A minor"
+  confidence: number; // 0..1
 }
 
 function hann(n: number): Float32Array {
@@ -29,7 +30,6 @@ const WINDOW = hann(FFT_SIZE);
 export function estimateKey(samples: Float32Array, sampleRate: number): KeyResult | null {
   if (samples.length < FFT_SIZE * 4) return null;
 
-  // Use the middle 60s at most.
   const targetLen = Math.min(samples.length, Math.floor(sampleRate * 60));
   const offset = Math.max(0, Math.floor((samples.length - targetLen) / 2));
 
@@ -62,10 +62,8 @@ export function estimateKey(samples: Float32Array, sampleRate: number): KeyResul
   if (sum <= 0) return null;
   for (let i = 0; i < 12; i++) chroma[i] /= sum;
 
-  let bestScore = -Infinity;
-  let bestRot = 0;
-  let bestMode: "major" | "minor" = "major";
-
+  // Collect all 24 candidate scores to derive a confidence value.
+  const scores: { rot: number; mode: "major" | "minor"; score: number }[] = [];
   for (let rot = 0; rot < 12; rot++) {
     let sMaj = 0;
     let sMin = 0;
@@ -74,10 +72,20 @@ export function estimateKey(samples: Float32Array, sampleRate: number): KeyResul
       sMaj += v * MAJOR_PROFILE[i];
       sMin += v * MINOR_PROFILE[i];
     }
-    if (sMaj > bestScore) { bestScore = sMaj; bestRot = rot; bestMode = "major"; }
-    if (sMin > bestScore) { bestScore = sMin; bestRot = rot; bestMode = "minor"; }
+    scores.push({ rot, mode: "major", score: sMaj });
+    scores.push({ rot, mode: "minor", score: sMin });
   }
+  scores.sort((a, b) => b.score - a.score);
+  const best = scores[0];
+  const second = scores[1];
+  const ratio = best.score > 0 ? (best.score - second.score) / best.score : 0;
+  const confidence = Math.max(0, Math.min(1, ratio * 4 + 0.2));
 
-  const note = NOTE_NAMES[bestRot];
-  return { note, mode: bestMode, label: `${note} ${bestMode}` };
+  const note = NOTE_NAMES[best.rot];
+  return {
+    note,
+    mode: best.mode,
+    label: `${note} ${best.mode}`,
+    confidence: Math.round(confidence * 100) / 100,
+  };
 }

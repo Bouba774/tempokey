@@ -17,7 +17,6 @@ function getCtx(): AudioContext {
 
 function decode(ac: AudioContext, buf: ArrayBuffer): Promise<AudioBuffer> {
   return new Promise((resolve, reject) => {
-    // Safari may only support the callback form.
     try {
       const p = ac.decodeAudioData(buf, resolve, reject) as unknown as Promise<AudioBuffer> | undefined;
       if (p && typeof (p as Promise<AudioBuffer>).then === "function") {
@@ -50,29 +49,43 @@ export function formatDuration(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export async function analyzeFile(file: File): Promise<TrackAnalysis> {
+export interface AnalyzeOptions {
+  force?: boolean; // bypass cache
+}
+
+export async function analyzeFile(
+  file: File,
+  options: AnalyzeOptions = {},
+): Promise<TrackAnalysis> {
   const fileHash = await hashFile(file);
-  const cached = await getCachedAnalysis(fileHash);
-  if (cached) return cached;
+  if (!options.force) {
+    const cached = await getCachedAnalysis(fileHash);
+    if (cached) return cached;
+  }
 
   const buf = await file.arrayBuffer();
   const audio = await decode(getCtx(), buf);
   const mono = toMono(audio);
 
-  // Yield to the UI thread between heavy passes.
   await new Promise<void>((r) => setTimeout(r, 0));
-  const bpm = estimateBPM(mono, audio.sampleRate);
+  const bpmRes = estimateBPM(mono, audio.sampleRate);
 
   await new Promise<void>((r) => setTimeout(r, 0));
   const keyRes = estimateKey(mono, audio.sampleRate);
   const camelot = keyRes ? toCamelot(keyRes) : null;
 
+  const suspect = bpmRes.suspect || (keyRes ? keyRes.confidence < 0.45 : true);
+
   const result: TrackAnalysis = {
     fileHash,
-    bpm,
+    bpm: bpmRes.bpm,
+    bpmConfidence: bpmRes.confidence,
+    bpmCandidates: bpmRes.candidates,
     key: keyRes?.label ?? null,
+    keyConfidence: keyRes?.confidence ?? null,
     camelot,
     durationSec: audio.duration,
+    suspect,
     analyzedAt: Date.now(),
   };
   await setCachedAnalysis(result);

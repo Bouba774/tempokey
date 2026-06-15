@@ -1,11 +1,16 @@
 import { createStore, get as idbGet, set as idbSet } from "idb-keyval";
+import type { BpmCandidate } from "./bpm";
 
 export interface TrackAnalysis {
   fileHash: string;
   bpm: number | null;
-  key: string | null;     // human label, e.g. "A minor"
+  bpmConfidence: number | null;
+  bpmCandidates: BpmCandidate[];
+  key: string | null; // human label, e.g. "A minor"
+  keyConfidence: number | null;
   camelot: string | null; // e.g. "8A"
   durationSec: number;
+  suspect: boolean;
   analyzedAt: number;
 }
 
