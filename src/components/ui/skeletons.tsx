@@ -3,8 +3,8 @@
  * Utilise la classe `.shimmer` (cf. styles.css) pour un effet pro et discret.
  */
 
-function Bar({ className = "" }: { className?: string }) {
-  return <div className={`shimmer rounded-md ${className}`} />;
+function Bar({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
+  return <div className={`shimmer rounded-md ${className}`} style={style} />;
 }
 
 export function TrackRowSkeleton() {
@@ -81,9 +81,3 @@ export function DashboardSkeleton() {
   );
 }
 
-// Allow inline style via the Bar's className pass-through.
-declare module "react" {
-  interface HTMLAttributes<T> {
-    style?: React.CSSProperties;
-  }
-}
