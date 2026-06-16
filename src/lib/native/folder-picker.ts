@@ -83,8 +83,3 @@ export async function loadNativeFile(entry: {
   return new File([ab], entry.name, { type });
 }
 
-// (unreachable original return retained below for clarity, removed)
-const _unused = 0;
-void _unused;
-  return new File([bytes], entry.name, { type });
-}
