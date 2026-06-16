@@ -79,6 +79,16 @@ npx @capacitor/assets generate --android \
     echo "⚠ @capacitor/assets failed; continuing with platform defaults." >&2
   }
 
+echo "▶ Installing native FolderPicker plugin (Storage Access Framework)…"
+PKG_DIR="android/app/src/main/java/app/lovable/tempokey"
+PLUGIN_DIR="$PKG_DIR/plugins"
+mkdir -p "$PLUGIN_DIR"
+cp -f android-resources/native-plugin/FolderPickerPlugin.kt "$PLUGIN_DIR/FolderPickerPlugin.kt"
+# Replace the generated MainActivity so the plugin is registered at startup.
+cp -f android-resources/native-plugin/MainActivity.kt "$PKG_DIR/MainActivity.kt"
+# Older Capacitor templates emit a Java MainActivity — remove it to avoid duplicate classes.
+rm -f "$PKG_DIR/MainActivity.java"
+
 echo "▶ Syncing Capacitor…"
 npx cap sync android
 
