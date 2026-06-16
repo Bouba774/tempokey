@@ -85,7 +85,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   error: null,
 
   play: async (track) => {
-    const file = useLibraryStore.getState().getFile(track.id);
+    const file = await useLibraryStore.getState().ensureFile(track.id);
     if (!file) {
       set({
         error:
