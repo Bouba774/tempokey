@@ -21,10 +21,12 @@ fi
 
 echo "▶ Installing native Java sources into $JAVA_DIR…"
 mkdir -p "$JAVA_DIR"
-cp -f "$SRC/TempoKeyPermissions.java" "$JAVA_DIR/TempoKeyPermissions.java"
-cp -f "$SRC/MainActivity.java" "$JAVA_DIR/MainActivity.java"
+cp -f "$SRC/TempoKeyPermissions.java"  "$JAVA_DIR/TempoKeyPermissions.java"
+cp -f "$SRC/TempoKeyFolderPicker.java" "$JAVA_DIR/TempoKeyFolderPicker.java"
+cp -f "$SRC/MainActivity.java"         "$JAVA_DIR/MainActivity.java"
 echo "  ✓ TempoKeyPermissions.java"
-echo "  ✓ MainActivity.java (plugin registered)"
+echo "  ✓ TempoKeyFolderPicker.java (SAF folder picker)"
+echo "  ✓ MainActivity.java (plugins registered)"
 
 echo "▶ Patching AndroidManifest.xml with audio permissions…"
 if grep -q "READ_MEDIA_AUDIO" "$MANIFEST"; then
