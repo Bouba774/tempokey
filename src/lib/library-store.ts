@@ -152,6 +152,54 @@ export async function buildLibraryFromFiles(
   return { library: lib, files: fileEntries };
 }
 
+/**
+ * Build a library from native Android SAF entries (content:// URIs).
+ * Mirrors `buildLibraryFromFiles` but wraps each entry into a lazy
+ * File-like backed by the Capacitor folder-picker plugin.
+ */
+export async function buildLibraryFromNativeEntries(
+  entries: NativeAudioEntry[],
+  folderName: string,
+  onProgress?: (p: ImportProgress) => void,
+): Promise<{ library: Library; files: Array<{ trackId: string; file: File }> }> {
+  const total = entries.length;
+  onProgress?.({ phase: "scan", scanned: 0, total });
+  const tracks: Track[] = new Array(total);
+  const fileEntries: Array<{ trackId: string; file: File }> = new Array(total);
+  for (let i = 0; i < total; i++) {
+    const e = entries[i];
+    const id = `${i}-${e.relativePath}`;
+    tracks[i] = {
+      id,
+      title: stripExt(e.name),
+      fileName: e.name,
+      filePath: e.relativePath,
+      extension: getExt(e.name),
+      size: typeof e.size === "number" ? e.size : null,
+      fileHash: null,
+      bpm: null,
+      key: null,
+      camelot: null,
+      durationSec: null,
+      duration: null,
+      analyzed: false,
+      status: "pending",
+      error: null,
+    };
+    fileEntries[i] = { trackId: id, file: createNativeFile(e) };
+    if (i % 200 === 0) onProgress?.({ phase: "scan", scanned: i + 1, total });
+  }
+  onProgress?.({ phase: "build", scanned: total, total });
+  const lib: Library = {
+    id: `lib_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+    name: folderName || "Dossier importé",
+    createdAt: Date.now(),
+    tracks,
+  };
+  onProgress?.({ phase: "done", scanned: total, total });
+  return { library: lib, files: fileEntries };
+}
+
 function metaOf(lib: Library): LibraryMeta {
   return { id: lib.id, name: lib.name, createdAt: lib.createdAt, trackCount: lib.tracks.length };
 }

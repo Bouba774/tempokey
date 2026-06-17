@@ -4,12 +4,18 @@ import { toast } from "sonner";
 import {
   useLibraryStore,
   buildLibraryFromFiles,
+  buildLibraryFromNativeEntries,
   type ImportProgress,
 } from "@/lib/library-store";
 import { useAnalysisStore } from "@/lib/analysis-store";
 import { ImportProgressModal } from "@/components/ImportProgressModal";
 import { PermissionExplainModal } from "@/components/PermissionExplainModal";
 import { ensureAudioAccess, isAndroidNative } from "@/lib/native/permissions";
+import {
+  pickNativeFolder,
+  listNativeAudio,
+  isNativeFolderPickerAvailable,
+} from "@/lib/native/folder-picker";
 import {
   FolderPlus,
   Clock,
