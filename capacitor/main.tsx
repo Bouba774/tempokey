@@ -19,6 +19,7 @@ import {
 import { QueryClient } from "@tanstack/react-query";
 import { routeTree } from "../src/routeTree.gen";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
+import { initAndroidBack } from "../src/lib/android-back";
 import "../src/styles.css";
 
 const log = (stage: string, extra?: unknown) => {
@@ -28,6 +29,12 @@ const log = (stage: string, extra?: unknown) => {
 };
 
 log("App Started");
+
+// Single centralized Android hardware back-button handler (toast-to-exit on
+// root, Escape dispatch for modals/menus, history.back for inner screens,
+// keyboard dismiss). Stack of component handlers is registered via the
+// useBackHandler hook.
+void initAndroidBack();
 
 // Optional Capacitor diagnostics + edge-to-edge wiring.
 // All imports stay dynamic so the SPA bundle compiles even if a package is
