@@ -23,6 +23,14 @@ const stack: BackHandler[] = [];
 let initialised = false;
 let lastExitPromptAt = 0;
 
+// Hide Capacitor module specifiers from the web bundler (rolldown). The
+// packages are only installed during the Android build pipeline; on the web
+// these resolve to `null` and the whole module is a no-op.
+const dynImport = (name: string): Promise<any> =>
+  (0, eval)(`import(${JSON.stringify(name)})`);
+const safeImport = (name: string): Promise<any> =>
+  dynImport(name).catch(() => null);
+
 export function pushBackHandler(handler: BackHandler): () => void {
   stack.push(handler);
   return () => {
@@ -70,8 +78,7 @@ async function defaultBack(canGoBack: boolean): Promise<void> {
   // 3) Root → double-press to exit.
   const now = Date.now();
   if (now - lastExitPromptAt < 2000) {
-    // @ts-ignore — installed only in the Android build pipeline.
-    const cap: any = await import("@capacitor/app").catch(() => null);
+    const cap = await safeImport("@capacitor/app");
     cap?.App?.exitApp?.().catch?.(() => {});
     return;
   }
@@ -83,14 +90,11 @@ export async function initAndroidBack(): Promise<void> {
   if (initialised) return;
   initialised = true;
 
-  // @ts-ignore — installed only in the Android build pipeline.
-  const core: any = await import("@capacitor/core").catch(() => null);
+  const core = await safeImport("@capacitor/core");
   if (!core?.Capacitor?.isNativePlatform?.()) return;
 
-  // @ts-ignore — installed only in the Android build pipeline.
-  const appMod: any = await import("@capacitor/app").catch(() => null);
-  // @ts-ignore — installed only in the Android build pipeline.
-  const kbMod: any = await import("@capacitor/keyboard").catch(() => null);
+  const appMod = await safeImport("@capacitor/app");
+  const kbMod = await safeImport("@capacitor/keyboard");
 
   // Track keyboard visibility — first back press should dismiss the keyboard.
   let keyboardVisible = false;
