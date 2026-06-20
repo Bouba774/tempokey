@@ -3,7 +3,6 @@ import { toast } from "sonner";
 import {
   CheckCheck,
   ChevronRight,
-  FolderLock,
   Loader2,
   RotateCcw,
   ShieldAlert,
@@ -12,13 +11,7 @@ import {
 import { useLibraryStore } from "@/lib/library-store";
 import { useOrderedTracks, useOrderingStore } from "@/lib/ordering-store";
 import { buildPreview, TEMPLATES, TEMPLATE_VARIABLES, type TemplateId, type RenamePreviewItem } from "@/lib/rename/templates";
-import {
-  ensurePermission,
-  isFsAccessSupported,
-  loadDirectoryHandle,
-  pickDirectoryHandle,
-  saveDirectoryHandle,
-} from "@/lib/rename/dir-handle";
+import { isFsAccessSupported } from "@/lib/rename/dir-handle";
 import { applyRename, undoOperation, type ApplyProgress } from "@/lib/rename/engine";
 import { loadHistory, type RenameOperation } from "@/lib/rename/history";
 
@@ -37,8 +30,6 @@ export function RenamePanel() {
   const [customFormat, setCustomFormat] = useState("{ORDER} - {BPM} - {KEY} - {TITLE}");
   const [cleanPrefixes, setCleanPrefixes] = useState(true);
   const [scope, setScope] = useState<"all" | "selection">(selectedIds.size > 0 ? "selection" : "all");
-  const [hasHandle, setHasHandle] = useState(false);
-  const [grantBusy, setGrantBusy] = useState(false);
   const [progress, setProgress] = useState<ApplyProgress | null>(null);
   const [result, setResult] = useState<{ applied: number; failed: number; operationId: string | null } | null>(null);
   const [history, setHistory] = useState<RenameOperation[]>([]);
@@ -46,12 +37,6 @@ export function RenamePanel() {
   const [error, setError] = useState<string | null>(null);
 
   const fsSupported = isFsAccessSupported();
-
-  // Detect existing directory handle for this library
-  useEffect(() => {
-    if (!library) return;
-    void loadDirectoryHandle(library.id).then((h) => setHasHandle(!!h));
-  }, [library]);
 
   // Load history scoped to current library
   useEffect(() => {
@@ -69,29 +54,6 @@ export function RenamePanel() {
     () => (step === "preview" ? buildPreview(template, customFormat, scopedTracks, { cleanPrefixes }) : null),
     [step, template, customFormat, scopedTracks, cleanPrefixes],
   );
-
-  async function grantAccess() {
-    if (!library) return;
-    setGrantBusy(true);
-    setError(null);
-    try {
-      const h = await pickDirectoryHandle();
-      if (!h) {
-        setGrantBusy(false);
-        return;
-      }
-      const ok = await ensurePermission(h, "readwrite");
-      if (!ok) {
-        setError("Permission d'écriture refusée.");
-        setGrantBusy(false);
-        return;
-      }
-      await saveDirectoryHandle(library.id, h);
-      setHasHandle(true);
-    } finally {
-      setGrantBusy(false);
-    }
-  }
 
   async function runApply() {
     if (!preview) return;
