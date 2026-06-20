@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLibraryStore } from "@/lib/library-store";
 import { useAnalysisStore } from "@/lib/analysis-store";
 import { useOrderingStore } from "@/lib/ordering-store";
@@ -25,6 +25,18 @@ function Workspace() {
   const running = useAnalysisStore((s) => s.running);
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("library");
+  // Refs vers chaque bouton onglet pour pouvoir centrer l'onglet actif
+  // dans le rail horizontal lorsqu'il devient sélectionné.
+  const tabRefs = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({});
+
+  useEffect(() => {
+    const el = tabRefs.current[tab];
+    if (!el) return;
+    // `inline: "center"` repositionne le rail pour que l'onglet actif soit
+    // toujours visible (et centré quand l'espace le permet), même quand on
+    // passe d'un onglet de bord à l'autre.
+    el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [tab]);
 
   useEffect(() => {
     void hydrate();
@@ -56,7 +68,11 @@ function Workspace() {
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <WorkspaceHeader />
       <LibraryContextCard />
-      <div role="tablist" className="sticky z-20 mt-4 flex gap-1 overflow-x-auto border-b border-border bg-background px-4" style={{ top: "calc(env(safe-area-inset-top, 0px) + 65px)" }}>
+      <div
+        role="tablist"
+        className="scrollbar-none sticky z-20 mt-4 flex gap-1 overflow-x-auto overscroll-x-contain border-b border-border bg-background px-4 [scroll-behavior:smooth] [-webkit-overflow-scrolling:touch]"
+        style={{ top: "calc(env(safe-area-inset-top, 0px) + 65px)" }}
+      >
 
         {([
           { id: "library", label: "Bibliothèque" },
@@ -68,16 +84,19 @@ function Workspace() {
           return (
             <button
               key={t.id}
+              ref={(el) => { tabRefs.current[t.id] = el; }}
               role="tab"
               aria-selected={active}
               onClick={() => setTab(t.id)}
-              className={`relative px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
-                active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+              className={`relative shrink-0 scroll-mx-6 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors duration-200 ${
+                active
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {t.label}
               {active && (
-                <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-[var(--primary-glow)]" />
+                <span className="absolute inset-x-3 -bottom-px h-[2px] rounded-full bg-[var(--primary-glow)] shadow-[0_0_10px_var(--primary-glow)]" />
               )}
             </button>
           );
