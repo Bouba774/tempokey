@@ -150,7 +150,7 @@ function Home() {
       />
 
       {/* HERO */}
-      <section className="relative overflow-hidden px-6 pt-10 pb-8">
+      <section className="relative overflow-hidden px-6 pt-10 pb-8 safe-pt safe-px">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 -top-24 h-72 opacity-60"
