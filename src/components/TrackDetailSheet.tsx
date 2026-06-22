@@ -93,9 +93,10 @@ export function TrackDetailSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/60 backdrop-blur-sm">
+    <div data-tempokey-overlay className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/60 backdrop-blur-sm">
       <button aria-label="Fermer" onClick={onClose} className="flex-1" />
       <section
+        data-tempokey-sheet
         role="dialog"
         aria-modal="true"
         aria-labelledby="track-detail-title"
