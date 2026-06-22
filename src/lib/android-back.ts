@@ -18,6 +18,28 @@
 import { toast } from "sonner";
 
 export type BackHandler = () => boolean | void | Promise<boolean | void>;
+type ListenerResult = { catch?: (onRejected: () => void) => void } | Promise<unknown>;
+type CapacitorCoreModule = {
+  Capacitor?: { isNativePlatform?: () => boolean };
+};
+type CapacitorAppModule = {
+  App?: {
+    addListener?: (
+      eventName: "backButton",
+      listenerFunc: (event: { canGoBack: boolean }) => void | Promise<void>,
+    ) => ListenerResult;
+    exitApp?: () => Promise<void>;
+  };
+};
+type CapacitorKeyboardModule = {
+  Keyboard?: {
+    addListener?: (
+      eventName: "keyboardWillShow" | "keyboardWillHide",
+      listenerFunc: () => void,
+    ) => ListenerResult;
+    hide?: () => Promise<void>;
+  };
+};
 
 const stack: BackHandler[] = [];
 let initialised = false;
@@ -26,10 +48,8 @@ let lastExitPromptAt = 0;
 // Hide Capacitor module specifiers from the web bundler (rolldown). The
 // packages are only installed during the Android build pipeline; on the web
 // these resolve to `null` and the whole module is a no-op.
-const dynImport = (name: string): Promise<any> =>
-  (0, eval)(`import(${JSON.stringify(name)})`);
-const safeImport = (name: string): Promise<any> =>
-  dynImport(name).catch(() => null);
+const dynImport = (name: string): Promise<unknown> => (0, eval)(`import(${JSON.stringify(name)})`);
+const safeImport = (name: string): Promise<unknown> => dynImport(name).catch(() => null);
 
 export function pushBackHandler(handler: BackHandler): () => void {
   stack.push(handler);
@@ -78,7 +98,7 @@ async function defaultBack(canGoBack: boolean): Promise<void> {
   // 3) Root → double-press to exit.
   const now = Date.now();
   if (now - lastExitPromptAt < 2000) {
-    const cap = await safeImport("@capacitor/app");
+    const cap = (await safeImport("@capacitor/app")) as CapacitorAppModule | null;
     cap?.App?.exitApp?.().catch?.(() => {});
     return;
   }
@@ -90,11 +110,11 @@ export async function initAndroidBack(): Promise<void> {
   if (initialised) return;
   initialised = true;
 
-  const core = await safeImport("@capacitor/core");
+  const core = (await safeImport("@capacitor/core")) as CapacitorCoreModule | null;
   if (!core?.Capacitor?.isNativePlatform?.()) return;
 
-  const appMod = await safeImport("@capacitor/app");
-  const kbMod = await safeImport("@capacitor/keyboard");
+  const appMod = (await safeImport("@capacitor/app")) as CapacitorAppModule | null;
+  const kbMod = (await safeImport("@capacitor/keyboard")) as CapacitorKeyboardModule | null;
 
   // Track keyboard visibility — first back press should dismiss the keyboard.
   let keyboardVisible = false;
@@ -107,6 +127,14 @@ export async function initAndroidBack(): Promise<void> {
 
   appMod?.App?.addListener?.("backButton", async ({ canGoBack }: { canGoBack: boolean }) => {
     try {
+      console.log("[TempoKey] BACK_BUTTON_RECEIVED", {
+        canGoBack: !!canGoBack,
+        handlers: stack.length,
+        bodyPointerEvents: document.body.style.pointerEvents || "",
+        bodyOverflow: document.body.style.overflow || "",
+        bodyInert: document.body.hasAttribute("inert"),
+        scrollLocked: document.body.hasAttribute("data-scroll-locked"),
+      });
       // a) Keyboard first.
       if (keyboardVisible && kbMod?.Keyboard?.hide) {
         await kbMod.Keyboard.hide().catch(() => {});
@@ -125,7 +153,6 @@ export async function initAndroidBack(): Promise<void> {
       // c) Fallbacks.
       await defaultBack(!!canGoBack);
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error("[TempoKey] backButton handler failed", err);
     }
   }).catch?.(() => {});
