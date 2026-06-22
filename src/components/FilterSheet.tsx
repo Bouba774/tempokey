@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { X, RotateCcw } from "lucide-react";
 import {
   CAMELOT_CODES,
@@ -54,6 +55,18 @@ export function FilterSheet({ open, onClose, filters, onChange }: Props) {
     onClose();
     return true;
   });
+
+  useEffect(() => {
+    if (!open) return;
+    // eslint-disable-next-line no-console
+    console.log("[TempoKey] SHEET_OPEN", { component: "FilterSheet" });
+    return () => {
+      // eslint-disable-next-line no-console
+      console.log("[TempoKey] OVERLAY_REMOVED", { component: "FilterSheet" });
+      // eslint-disable-next-line no-console
+      console.log("[TempoKey] FOCUS_RELEASED", { component: "FilterSheet" });
+    };
+  }, [open]);
 
   if (!open) return null;
 
