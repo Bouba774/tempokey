@@ -115,10 +115,10 @@ function boot() {
     );
     log("App Ready");
 
-    // Hide native splash once React rendered (no-op on web)
-    void import("@capacitor/splash-screen")
-      .then((m) => m.SplashScreen?.hide?.())
-      .catch(() => {});
+    // Splash hide + post-splash system-bar resync is handled centrally by
+    // `installAndroidSystemBarsSync()` (see src/lib/android-system-bars.ts).
+    // Do NOT call SplashScreen.hide() here — having two hide() callers
+    // re-creates the race that produced the band-behind-status-bar bug.
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error("[TempoKey] Boot failure", err);
