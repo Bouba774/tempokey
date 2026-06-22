@@ -18,6 +18,25 @@
 import { toast } from "sonner";
 
 export type BackHandler = () => boolean | void | Promise<boolean | void>;
+type ListenerResult = { catch?: (onRejected: () => void) => void } | Promise<unknown>;
+type CapacitorCoreModule = {
+  Capacitor?: { isNativePlatform?: () => boolean };
+};
+type CapacitorAppModule = {
+  App?: {
+    addListener?: (
+      eventName: "backButton",
+      listenerFunc: (event: { canGoBack: boolean }) => void | Promise<void>,
+    ) => ListenerResult;
+    exitApp?: () => Promise<void>;
+  };
+};
+type CapacitorKeyboardModule = {
+  Keyboard?: {
+    addListener?: (eventName: "keyboardWillShow" | "keyboardWillHide", listenerFunc: () => void) => ListenerResult;
+    hide?: () => Promise<void>;
+  };
+};
 
 const stack: BackHandler[] = [];
 let initialised = false;
@@ -76,7 +95,7 @@ async function defaultBack(canGoBack: boolean): Promise<void> {
   // 3) Root → double-press to exit.
   const now = Date.now();
   if (now - lastExitPromptAt < 2000) {
-    const cap = await safeImport("@capacitor/app");
+    const cap = (await safeImport("@capacitor/app")) as CapacitorAppModule | null;
     cap?.App?.exitApp?.().catch?.(() => {});
     return;
   }
@@ -88,11 +107,11 @@ export async function initAndroidBack(): Promise<void> {
   if (initialised) return;
   initialised = true;
 
-  const core = await safeImport("@capacitor/core");
+  const core = (await safeImport("@capacitor/core")) as CapacitorCoreModule | null;
   if (!core?.Capacitor?.isNativePlatform?.()) return;
 
-  const appMod = await safeImport("@capacitor/app");
-  const kbMod = await safeImport("@capacitor/keyboard");
+  const appMod = (await safeImport("@capacitor/app")) as CapacitorAppModule | null;
+  const kbMod = (await safeImport("@capacitor/keyboard")) as CapacitorKeyboardModule | null;
 
   // Track keyboard visibility — first back press should dismiss the keyboard.
   let keyboardVisible = false;
