@@ -113,7 +113,7 @@ export async function initAndroidBack(): Promise<void> {
         handlers: stack.length,
         bodyPointerEvents: document.body.style.pointerEvents || "",
         bodyOverflow: document.body.style.overflow || "",
-        bodyInert: document.body.inert === true,
+        bodyInert: document.body.hasAttribute("inert"),
         scrollLocked: document.body.hasAttribute("data-scroll-locked"),
       });
       // a) Keyboard first.
