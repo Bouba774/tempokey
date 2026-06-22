@@ -246,7 +246,8 @@ export function TrackDetailSheet({
               onClick={() => setCamelotOpen((v) => !v)}
               className="ml-auto inline-flex items-center gap-1 rounded-md border border-border bg-[var(--surface-elevated)] px-2 py-1 text-[11px] font-medium text-foreground hover:bg-accent"
             >
-              Modifier <ChevronDown className={`h-3 w-3 transition ${camelotOpen ? "rotate-180" : ""}`} />
+              Modifier{" "}
+              <ChevronDown className={`h-3 w-3 transition ${camelotOpen ? "rotate-180" : ""}`} />
             </button>
           </div>
           {camelotOpen && (
@@ -272,8 +273,7 @@ export function TrackDetailSheet({
           {detected && detected.camelot && (
             <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
               <span>
-                Détecté :{" "}
-                <span className="text-foreground tabular-nums">{detected.camelot}</span>
+                Détecté : <span className="text-foreground tabular-nums">{detected.camelot}</span>
                 {detected.key && <span className="ml-1">({detected.key})</span>}
               </span>
               {keyChanged && (
@@ -295,11 +295,7 @@ export function TrackDetailSheet({
             { label: "Format", value: track.extension?.toUpperCase() || "—" },
             {
               label: "Analysé",
-              value: track.correctedAt
-                ? "Corrigé"
-                : track.analyzed
-                  ? "Oui"
-                  : "Non",
+              value: track.correctedAt ? "Corrigé" : track.analyzed ? "Oui" : "Non",
             },
           ].map((s) => (
             <div key={s.label} className="rounded-lg border border-border bg-card p-2">
