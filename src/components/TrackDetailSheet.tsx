@@ -58,9 +58,23 @@ export function TrackDetailSheet({
   // Android hardware back button closes the sheet first (LIFO, highest
   // priority while the sheet is open) before any other back behavior.
   useBackHandler(open, () => {
+    // eslint-disable-next-line no-console
+    console.log("[TempoKey] SHEET_CLOSE", { component: "TrackDetailSheet", reason: "android-back" });
     onClose();
     return true;
   });
+
+  useEffect(() => {
+    if (!open) return;
+    // eslint-disable-next-line no-console
+    console.log("[TempoKey] SHEET_OPEN", { component: "TrackDetailSheet" });
+    return () => {
+      // eslint-disable-next-line no-console
+      console.log("[TempoKey] OVERLAY_REMOVED", { component: "TrackDetailSheet" });
+      // eslint-disable-next-line no-console
+      console.log("[TempoKey] FOCUS_RELEASED", { component: "TrackDetailSheet" });
+    };
+  }, [open]);
 
   if (!open) return null;
 
