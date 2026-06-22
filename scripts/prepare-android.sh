@@ -70,15 +70,55 @@ fi
 echo "✓ index.html links bundled assets"
 
 echo "▶ Preparing icon & splash sources…"
-mkdir -p "$RES_DIR"
-# Use the committed official logo when present, otherwise download from CDN.
-if [ ! -f "$RES_DIR/icon.png" ]; then
-  curl -L --silent --fail "$LOGO_URL" -o "$RES_DIR/icon.png"
+mkdir -p "$RES_DIR" android-resources
+
+# Source priority for the Android launcher icon / splash:
+#   1) resources/icon.png if already committed
+#   2) src/assets/tempokey-logo.png (bundled official logo)
+#   3) android-resources/logo.png (legacy fallback)
+#   4) curl from $LOGO_URL (last resort — may 404 if CDN asset was rotated;
+#      curl returns exit code 22 with --fail on HTTP >= 400, which is what
+#      previously broke this step.)
+LOCAL_LOGO=""
+for candidate in \
+  "$RES_DIR/icon.png" \
+  "src/assets/tempokey-logo.png" \
+  "android-resources/logo.png"; do
+  if [ -f "$candidate" ] && [ -s "$candidate" ]; then
+    LOCAL_LOGO="$candidate"
+    break
+  fi
+done
+
+if [ -n "$LOCAL_LOGO" ]; then
+  echo "  ✓ Using local logo source: $LOCAL_LOGO"
+  if [ "$LOCAL_LOGO" != "$RES_DIR/icon.png" ]; then
+    cp -f "$LOCAL_LOGO" "$RES_DIR/icon.png"
+  fi
+else
+  echo "  ⚠ No local logo found, attempting CDN download: $LOGO_URL"
+  if ! curl -L --show-error --fail "$LOGO_URL" -o "$RES_DIR/icon.png"; then
+    echo "❌ Could not obtain a logo from any source (CDN returned an error)." >&2
+    echo "   Commit a PNG at one of:" >&2
+    echo "     - $RES_DIR/icon.png" >&2
+    echo "     - src/assets/tempokey-logo.png" >&2
+    echo "     - android-resources/logo.png" >&2
+    exit 1
+  fi
 fi
+
+if [ ! -s "$RES_DIR/icon.png" ]; then
+  echo "❌ $RES_DIR/icon.png is empty after preparation." >&2
+  exit 1
+fi
+
 if [ ! -f "$RES_DIR/splash.png" ]; then
   cp -f "$RES_DIR/icon.png" "$RES_DIR/splash.png"
 fi
 cp -f "$RES_DIR/icon.png" "android-resources/logo.png" 2>/dev/null || true
+
+echo "  ICON FILE:  $(ls -lah "$RES_DIR/icon.png" | awk '{print $5, $9}')"
+echo "  SPLASH FILE:$(ls -lah "$RES_DIR/splash.png" | awk '{print $5, $9}')"
 
 echo "▶ Adding Android platform (if missing)…"
 if [ ! -d "android" ]; then
