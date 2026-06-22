@@ -90,8 +90,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "TempoKey — Analyse et organise tes bibliothèques audio" },
       { name: "twitter:description", content: "Outil professionnel pour DJs et producteurs : analysez BPM, tonalité et organisez vos bibliothèques audio." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/1rSkoGGFpog371uZATdrO6SRHzN2/social-images/social-1781977880028-1000188518.webp" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/1rSkoGGFpog371uZATdrO6SRHzN2/social-images/social-1781977880028-1000188518.webp" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/y0UEjyX9PsfKBHY9ajt8QwNpplt2/social-images/social-1782145397276-1000188518.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/y0UEjyX9PsfKBHY9ajt8QwNpplt2/social-images/social-1782145397276-1000188518.webp" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
