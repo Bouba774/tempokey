@@ -36,9 +36,11 @@ log("App Started");
 // useBackHandler hook.
 void initAndroidBack();
 
-// Optional Capacitor diagnostics + edge-to-edge wiring.
-// All imports stay dynamic so the SPA bundle compiles even if a package is
-// absent during web preview ; failures are swallowed.
+// Capacitor diagnostics + single-source-of-truth system-bar wiring.
+// All status-bar / splash / app-state mutations live in
+// `src/lib/android-system-bars.ts`. Nothing else in the codebase should ever
+// touch StatusBar / SplashScreen directly — see the band-behind-status-bar
+// regression that was caused by having two competing call sites.
 (async () => {
   try {
     const cap = await import("@capacitor/core").catch(() => null);
@@ -48,57 +50,10 @@ void initAndroidBack();
         platform: cap.Capacitor.getPlatform(),
       });
     }
-
-    // ── Edge-to-edge status & navigation bar sync with the active theme ──
-    // The WebView is already overlaying the system bars (capacitor.config.ts).
-    // We just need to push the icon style (light/dark) when the theme flips.
-    const sb = await import("@capacitor/status-bar").catch(() => null);
-    if (sb?.StatusBar && cap?.Capacitor?.isNativePlatform()) {
-      // Capacitor StatusBar.Style mapping (IMPORTANT — easy to invert):
-      //   Style.Light = light CONTENT (white icons) → use on DARK backgrounds
-      //   Style.Dark  = dark CONTENT (black icons)  → use on LIGHT backgrounds
-      //   Style.Default = follow system
-      const apply = () => {
-        const isDark = document.documentElement.classList.contains("dark");
-
-        // Keep WebView overlaying system bars (edge-to-edge).
-        sb.StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
-
-        // Push the correct icon contrast for the active theme.
-        sb.StatusBar.setStyle({
-          style: isDark ? sb.Style.Light : sb.Style.Dark,
-        }).catch(() => {});
-
-        // Fully transparent — the app background paints under the status bar.
-        sb.StatusBar.setBackgroundColor({ color: "#00000000" }).catch(() => {});
-
-        // Mirror the active background into <meta name="theme-color"> so the
-        // recents thumbnail picks up the right tint when the WebView is
-        // briefly opaque (Android 12+).
-        const hex = isDark ? "#0A0D14" : "#FFFFFF";
-        let meta = document.querySelector<HTMLMetaElement>(
-          'meta[name="theme-color"]',
-        );
-        if (!meta) {
-          meta = document.createElement("meta");
-          meta.name = "theme-color";
-          document.head.appendChild(meta);
-        }
-        meta.content = hex;
-      };
-      apply();
-      // Re-sync on theme toggle (classList mutations on <html>)
-      const obs = new MutationObserver(apply);
-      obs.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ["class"],
-      });
-      // Re-sync when app comes back from background
-      const appMod = await import("@capacitor/app").catch(() => null);
-      appMod?.App?.addListener?.("appStateChange", ({ isActive }) => {
-        if (isActive) apply();
-      }).catch(() => {});
-    }
+    const { installAndroidSystemBarsSync } = await import(
+      "../src/lib/android-system-bars"
+    );
+    await installAndroidSystemBarsSync();
   } catch (e) {
     log("Capacitor Probe Skipped", String(e));
   }
@@ -160,10 +115,10 @@ function boot() {
     );
     log("App Ready");
 
-    // Hide native splash once React rendered (no-op on web)
-    void import("@capacitor/splash-screen")
-      .then((m) => m.SplashScreen?.hide?.())
-      .catch(() => {});
+    // Splash hide + post-splash system-bar resync is handled centrally by
+    // `installAndroidSystemBarsSync()` (see src/lib/android-system-bars.ts).
+    // Do NOT call SplashScreen.hide() here — having two hide() callers
+    // re-creates the race that produced the band-behind-status-bar bug.
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error("[TempoKey] Boot failure", err);

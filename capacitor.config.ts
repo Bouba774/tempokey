@@ -2,26 +2,31 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 /**
  * Capacitor configuration for the native Android wrapper around TempoKey.
- * The web app keeps its existing TanStack Start build; Capacitor only packages
- * the client output into an Android shell.
  *
- * webDir points to the static client bundle produced by `vite build` (the
- * Android workflow copies the SSR client assets into `dist/android` before
- * running `cap sync`).
+ * IMPORTANT — Edge-to-edge architecture (single source of truth):
+ *   • The WebView always extends under the system bars.
+ *   • The StatusBar plugin owns overlay/style/colour (see
+ *     `src/lib/android-system-bars.ts` → `syncAndroidSystemBars`).
+ *   • `adjustMarginsForEdgeToEdge: "disable"` is REQUIRED — any other value
+ *     forces the native shell to add a top margin that competes with
+ *     `StatusBar.setOverlaysWebView({ overlay: true })`, producing a random
+ *     dark/light band behind the status bar on relaunch or theme switch.
+ *   • `backgroundColor: "#00000000"` keeps the WebView itself transparent so
+ *     only the React `<body>` paints — no theme-mismatched band can leak
+ *     through.
  */
 const config: CapacitorConfig = {
   appId: "app.lovable.tempokey",
   appName: "TempoKey",
   webDir: "dist/android",
-  backgroundColor: "#0A0D14",
+  backgroundColor: "#00000000",
   android: {
     allowMixedContent: false,
     captureInput: true,
     webContentsDebuggingEnabled: false,
-    // Edge-to-edge moderne (Android 15+ obligatoire) : la WebView s'étend
-    // sous les barres système ; nous gérons les safe areas en CSS via
-    // env(safe-area-inset-*).
-    adjustMarginsForEdgeToEdge: "force",
+    // Disable the native margin shim. Edge-to-edge is handled in JS by the
+    // StatusBar plugin + CSS `env(safe-area-inset-*)` helpers.
+    adjustMarginsForEdgeToEdge: "disable",
   },
   plugins: {
     SplashScreen: {
@@ -35,9 +40,8 @@ const config: CapacitorConfig = {
       splashImmersive: true,
     },
     StatusBar: {
-      // Couche transparente — la WebView dessine derrière la status bar.
-      // Le style (icônes claires/sombres) est piloté depuis main.tsx
-      // en suivant le thème TempoKey (clair/sombre).
+      // Initial values — the runtime helper `syncAndroidSystemBars()` is the
+      // authoritative source after boot.
       overlaysWebView: true,
       style: "DEFAULT",
       backgroundColor: "#00000000",
