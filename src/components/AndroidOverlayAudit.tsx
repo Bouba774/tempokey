@@ -27,7 +27,7 @@ function readCounts(): AuditCounts {
     dialogs: document.querySelectorAll('[role="dialog"], [role="alertdialog"]').length,
     sheets: document.querySelectorAll("[data-tempokey-sheet]").length,
     overlays: document.querySelectorAll(
-      '[data-tempokey-overlay], [data-radix-dialog-overlay], [data-radix-alert-dialog-overlay], [data-radix-popper-content-wrapper]',
+      "[data-tempokey-overlay], [data-radix-dialog-overlay], [data-radix-alert-dialog-overlay], [data-radix-popper-content-wrapper]",
     ).length,
     portals: document.querySelectorAll("[data-radix-portal]").length,
     bodyLocked:
