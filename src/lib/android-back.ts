@@ -107,6 +107,15 @@ export async function initAndroidBack(): Promise<void> {
 
   appMod?.App?.addListener?.("backButton", async ({ canGoBack }: { canGoBack: boolean }) => {
     try {
+      // eslint-disable-next-line no-console
+      console.log("[TempoKey] BACK_BUTTON_RECEIVED", {
+        canGoBack: !!canGoBack,
+        handlers: stack.length,
+        bodyPointerEvents: document.body.style.pointerEvents || "",
+        bodyOverflow: document.body.style.overflow || "",
+        bodyInert: document.body.inert === true,
+        scrollLocked: document.body.hasAttribute("data-scroll-locked"),
+      });
       // a) Keyboard first.
       if (keyboardVisible && kbMod?.Keyboard?.hide) {
         await kbMod.Keyboard.hide().catch(() => {});
