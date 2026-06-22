@@ -7,11 +7,7 @@ import {
   type AnalysisFilter,
   DEFAULT_FILTERS,
 } from "@/lib/library-filters";
-import {
-  useOrderingStore,
-  DEFAULT_ORDER_LABEL,
-  type OrderSource,
-} from "@/lib/ordering-store";
+import { useOrderingStore, DEFAULT_ORDER_LABEL, type OrderSource } from "@/lib/ordering-store";
 import { useBackHandler } from "@/hooks/useBackHandler";
 
 interface Props {
@@ -50,7 +46,6 @@ export function FilterSheet({ open, onClose, filters, onChange }: Props) {
   const setOrder = useOrderingStore((s) => s.setOrder);
 
   useBackHandler(open, () => {
-    // eslint-disable-next-line no-console
     console.log("[TempoKey] SHEET_CLOSE", { component: "FilterSheet", reason: "android-back" });
     onClose();
     return true;
@@ -58,12 +53,9 @@ export function FilterSheet({ open, onClose, filters, onChange }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    // eslint-disable-next-line no-console
     console.log("[TempoKey] SHEET_OPEN", { component: "FilterSheet" });
     return () => {
-      // eslint-disable-next-line no-console
       console.log("[TempoKey] OVERLAY_REMOVED", { component: "FilterSheet" });
-      // eslint-disable-next-line no-console
       console.log("[TempoKey] FOCUS_RELEASED", { component: "FilterSheet" });
     };
   }, [open]);
@@ -86,9 +78,15 @@ export function FilterSheet({ open, onClose, filters, onChange }: Props) {
   const activeSource = active?.source ?? "import";
 
   return (
-    <div data-tempokey-overlay className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm">
+    <div
+      data-tempokey-overlay
+      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm"
+    >
       <button aria-label="Fermer" onClick={onClose} className="flex-1" />
-      <div data-tempokey-sheet className="rounded-t-2xl border-t border-border bg-[var(--surface)] max-h-[85dvh] overflow-y-auto">
+      <div
+        data-tempokey-sheet
+        className="rounded-t-2xl border-t border-border bg-[var(--surface)] max-h-[85dvh] overflow-y-auto"
+      >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-[var(--surface)] px-4 py-3">
           <h2 className="text-base font-semibold">Filtres & tri</h2>
           <div className="flex items-center gap-1">
