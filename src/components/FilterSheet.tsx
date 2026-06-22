@@ -11,6 +11,7 @@ import {
   DEFAULT_ORDER_LABEL,
   type OrderSource,
 } from "@/lib/ordering-store";
+import { useBackHandler } from "@/hooks/useBackHandler";
 
 interface Props {
   open: boolean;
@@ -46,6 +47,13 @@ const SORTS: { id: OrderSource; label: string }[] = [
 export function FilterSheet({ open, onClose, filters, onChange }: Props) {
   const active = useOrderingStore((s) => s.active);
   const setOrder = useOrderingStore((s) => s.setOrder);
+
+  useBackHandler(open, () => {
+    // eslint-disable-next-line no-console
+    console.log("[TempoKey] SHEET_CLOSE", { component: "FilterSheet", reason: "android-back" });
+    onClose();
+    return true;
+  });
 
   if (!open) return null;
 
