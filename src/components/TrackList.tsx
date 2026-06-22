@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo } from "react";
+import { useRef, useState, useMemo, useDeferredValue } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Search,
@@ -19,6 +19,7 @@ import { useLibraryStore, type Track } from "@/lib/library-store";
 import { useOrderingStore, useOrderedTracks } from "@/lib/ordering-store";
 import { FilterSheet } from "./FilterSheet";
 import { TrackDetailSheet } from "./TrackDetailSheet";
+import { PanelErrorBoundary } from "./PanelErrorBoundary";
 import { CamelotBadge } from "./viz/CamelotBadge";
 import { EnergyMeter } from "./viz/EnergyMeter";
 import { CompatibilityBadge } from "./viz/CompatibilityBadge";
@@ -236,9 +237,13 @@ export function TrackList() {
     return true;
   });
 
+  // Defer the heavy filter pass so typing into the search input never blocks
+  // the input field itself on Android (large libraries can take >100ms to
+  // re-filter). React keeps the input responsive while the list catches up.
+  const deferredQuery = useDeferredValue(query);
   const filtered = useMemo(
-    () => applyFiltersOnly(ordered, query, filters),
-    [ordered, query, filters],
+    () => applyFiltersOnly(ordered, deferredQuery, filters),
+    [ordered, deferredQuery, filters],
   );
 
   // When the user has selected a single track, compare every row to it.
@@ -370,13 +375,17 @@ export function TrackList() {
         )}
       </div>
 
-      <FilterSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        filters={filters}
-        onChange={setFilters}
-      />
-      <TrackDetailSheet trackId={detailId} onClose={() => setDetailId(null)} />
+      <PanelErrorBoundary name="FilterSheet">
+        <FilterSheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          filters={filters}
+          onChange={setFilters}
+        />
+      </PanelErrorBoundary>
+      <PanelErrorBoundary name="TrackDetailSheet">
+        <TrackDetailSheet trackId={detailId} onClose={() => setDetailId(null)} />
+      </PanelErrorBoundary>
     </div>
   );
 }
