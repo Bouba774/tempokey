@@ -84,17 +84,37 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "TempoKey — Analyse et organise tes bibliothèques audio" },
-      { name: "description", content: "Outil professionnel pour DJs et producteurs : analysez BPM, tonalité et organisez vos bibliothèques audio." },
+      {
+        name: "description",
+        content:
+          "Outil professionnel pour DJs et producteurs : analysez BPM, tonalité et organisez vos bibliothèques audio.",
+      },
       { name: "theme-color", content: "#0A0D14" },
       { property: "og:title", content: "TempoKey — Analyse et organise tes bibliothèques audio" },
-      { property: "og:description", content: "Outil professionnel pour DJs et producteurs : analysez BPM, tonalité et organisez vos bibliothèques audio." },
+      {
+        property: "og:description",
+        content:
+          "Outil professionnel pour DJs et producteurs : analysez BPM, tonalité et organisez vos bibliothèques audio.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "TempoKey — Analyse et organise tes bibliothèques audio" },
-      { name: "twitter:description", content: "Outil professionnel pour DJs et producteurs : analysez BPM, tonalité et organisez vos bibliothèques audio." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/y0UEjyX9PsfKBHY9ajt8QwNpplt2/social-images/social-1782145397276-1000188518.webp" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/y0UEjyX9PsfKBHY9ajt8QwNpplt2/social-images/social-1782145397276-1000188518.webp" },
+      {
+        name: "twitter:description",
+        content:
+          "Outil professionnel pour DJs et producteurs : analysez BPM, tonalité et organisez vos bibliothèques audio.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/y0UEjyX9PsfKBHY9ajt8QwNpplt2/social-images/social-1782145397276-1000188518.webp",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/y0UEjyX9PsfKBHY9ajt8QwNpplt2/social-images/social-1782145397276-1000188518.webp",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
