@@ -320,6 +320,32 @@ public class FolderPickerPlugin extends Plugin {
         ret.put("granted", granted);
         call.resolve(ret);
     }
+
+    @PluginMethod
+    public void renameDocument(PluginCall call) {
+        String uriStr = call.getString("uri");
+        String newName = call.getString("newName");
+        if (uriStr == null || newName == null) {
+            call.reject("MISSING_ARGS");
+            return;
+        }
+        try {
+            Uri oldUri = Uri.parse(uriStr);
+            Uri newUri = DocumentsContract.renameDocument(
+                getContext().getContentResolver(), oldUri, newName
+            );
+            if (newUri == null) {
+                call.reject("RENAME_FAILED");
+                return;
+            }
+            JSObject ret = new JSObject();
+            ret.put("uri", newUri.toString());
+            ret.put("name", newName);
+            call.resolve(ret);
+        } catch (Exception e) {
+            call.reject("RENAME_ERROR", e);
+        }
+    }
 }
 JAVA
 

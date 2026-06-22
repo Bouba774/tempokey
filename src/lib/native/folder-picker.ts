@@ -1,4 +1,7 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
+import { createStore, get as idbGet, set as idbSet } from "idb-keyval";
+import type { Library } from "@/lib/library-store";
+import { useLibraryStore } from "@/lib/library-store";
 
 export interface SafFileMeta {
   uri: string;
@@ -18,6 +21,10 @@ export interface FolderPickerPlugin {
     data: string;
   }>;
   hasPersistedAccess(opts: { treeUri: string }): Promise<{ granted: boolean }>;
+  renameDocument(opts: { uri: string; newName: string }): Promise<{
+    uri: string;
+    name: string;
+  }>;
 }
 
 export const FolderPicker = registerPlugin<FolderPickerPlugin>("FolderPicker");
@@ -32,6 +39,45 @@ export function isCapacitorAndroid(): boolean {
 
 const ACTIVE_TREE_KEY = "tempokey.activeTreeUri";
 const ACTIVE_TREE_NAME_KEY = "tempokey.activeTreeName";
+const safStore = createStore("tempokey-saf", "libraries");
+
+interface AndroidLibraryMeta {
+  libId: string;
+  treeUri: string;
+  name: string;
+  importedAt: number;
+}
+
+export async function persistAndroidLibrary(
+  libId: string,
+  treeUri: string,
+  name: string,
+): Promise<void> {
+  try {
+    const rec: AndroidLibraryMeta = {
+      libId,
+      treeUri,
+      name,
+      importedAt: Date.now(),
+    };
+    await idbSet(`saf:${libId}`, rec, safStore);
+  } catch {
+    /* best-effort */
+  }
+}
+
+export async function loadAndroidLibrary(
+  libId: string,
+): Promise<AndroidLibraryMeta | null> {
+  try {
+    const rec = (await idbGet(`saf:${libId}`, safStore)) as
+      | AndroidLibraryMeta
+      | undefined;
+    return rec ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export function getActiveTreeUri(): string | null {
   if (typeof window === "undefined") return null;
@@ -126,7 +172,30 @@ export function safFileFromMeta(meta: SafFileMeta): File {
     return blob;
   };
 
+  // Tag the file so downstream code (audio player, rename engine) can detect
+  // a SAF-backed handle and use the native plugin rather than blob URLs or
+  // FileSystemFileHandle APIs (neither work on Android).
+  try {
+    Object.defineProperty(file, "__safUri", {
+      value: meta.uri,
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(file, "__safMeta", {
+      value: meta,
+      configurable: true,
+      writable: true,
+    });
+  } catch {
+    /* ignore */
+  }
   return file;
+}
+
+export function getSafUri(file: File | undefined | null): string | null {
+  if (!file) return null;
+  const v = (file as unknown as { __safUri?: unknown }).__safUri;
+  return typeof v === "string" ? v : null;
 }
 
 export async function pickAndroidFolder(): Promise<{
@@ -158,4 +227,61 @@ export async function pickAndroidFolder(): Promise<{
     console.warn("ANDROID_PICKER_FAIL", err);
     return null;
   }
+}
+
+/**
+ * Re-list the persisted SAF tree for `libId` and rebuild lazy `File` objects
+ * backed by the native plugin. Returns null on web, when no persisted access
+ * exists, or if the URI permission has been revoked.
+ */
+export async function restoreAndroidFiles(
+  libId: string,
+): Promise<{ name: string; treeUri: string; files: File[] } | null> {
+  if (!isCapacitorAndroid()) return null;
+  const meta = await loadAndroidLibrary(libId);
+  if (!meta) return null;
+  try {
+    const { granted } = await FolderPicker.hasPersistedAccess({
+      treeUri: meta.treeUri,
+    });
+    if (!granted) return null;
+    const { rootName, files: metas } = await FolderPicker.listAudioFiles({
+      treeUri: meta.treeUri,
+    });
+    setActiveTreeUri(meta.treeUri, rootName || meta.name);
+    return {
+      name: rootName || meta.name,
+      treeUri: meta.treeUri,
+      files: metas.map(safFileFromMeta),
+    };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn("ANDROID_RESTORE_FAIL", err);
+    return null;
+  }
+}
+
+/**
+ * After hydration / restoreLast, rebuild the in-memory File map from the
+ * persisted SAF tree so playback, analysis and renaming work without any
+ * re-import.
+ */
+export async function restoreFilesForLibrary(lib: Library): Promise<boolean> {
+  const restored = await restoreAndroidFiles(lib.id);
+  if (!restored) return false;
+  const byPath = new Map<string, File>();
+  for (const f of restored.files) {
+    const p =
+      (f as unknown as { webkitRelativePath?: string }).webkitRelativePath ||
+      f.name;
+    byPath.set(p, f);
+  }
+  const entries: Array<{ trackId: string; file: File }> = [];
+  for (const t of lib.tracks) {
+    const f = byPath.get(t.filePath) ?? byPath.get(t.fileName);
+    if (f) entries.push({ trackId: t.id, file: f });
+  }
+  if (entries.length === 0) return false;
+  useLibraryStore.getState().setFiles(entries);
+  return true;
 }

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { useLibraryStore, type Track } from "@/lib/library-store";
+import { getSafUri } from "@/lib/native/folder-picker";
 
 interface PlayerState {
   currentId: string | null;
@@ -111,6 +112,38 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       a.pause();
     } catch {}
     releaseUrl();
+    // On Android SAF-backed files, the underlying Blob bytes are empty —
+    // the bytes live behind `content://` and are streamed via the native
+    // plugin. Fetch the full buffer once and wrap it in a real Blob so the
+    // <audio> element can play it.
+    const safUri = getSafUri(file);
+    if (safUri) {
+      set({
+        currentId: track.id,
+        currentTitle: track.title,
+        durationSec: track.durationSec ?? 0,
+        positionSec: 0,
+        isPlaying: false,
+        isLoading: true,
+        error: null,
+      });
+      try {
+        const buf = await file.arrayBuffer();
+        const blob = new Blob([buf], { type: file.type || "audio/mpeg" });
+        currentUrl = URL.createObjectURL(blob);
+        a.src = currentUrl;
+        a.volume = get().volume;
+        await a.play();
+      } catch (e) {
+        console.warn("[tempokey] saf play failed", e);
+        set({
+          isPlaying: false,
+          isLoading: false,
+          error: "Impossible de lire ce fichier.",
+        });
+      }
+      return;
+    }
     currentUrl = URL.createObjectURL(file);
     a.src = currentUrl;
     a.volume = get().volume;

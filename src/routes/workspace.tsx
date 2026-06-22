@@ -3,6 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { useLibraryStore } from "@/lib/library-store";
 import { useAnalysisStore } from "@/lib/analysis-store";
 import { useOrderingStore } from "@/lib/ordering-store";
+import {
+  isCapacitorAndroid,
+  restoreFilesForLibrary,
+} from "@/lib/native/folder-picker";
 import { WorkspaceHeader } from "@/components/WorkspaceHeader";
 import { TrackList } from "@/components/TrackList";
 import { AnalysisPanel } from "@/components/AnalysisPanel";
@@ -47,6 +51,17 @@ function Workspace() {
   useEffect(() => {
     if (library) void hydrateOrder(library.id);
   }, [library, hydrateOrder]);
+
+  // After cold start, the in-memory file map is empty. On Android, rebuild
+  // it from the persisted SAF tree so playback, analysis and renaming all
+  // work without asking the user to re-import.
+  useEffect(() => {
+    if (!library || !isCapacitorAndroid()) return;
+    const state = useLibraryStore.getState();
+    const hasFile = library.tracks.some((t) => !!state.getFile(t.id));
+    if (hasFile) return;
+    void restoreFilesForLibrary(library);
+  }, [library]);
 
   useEffect(() => {
     if (hydrated && !library) navigate({ to: "/" });

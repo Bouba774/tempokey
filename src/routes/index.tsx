@@ -38,6 +38,8 @@ import {
 import {
   isCapacitorAndroid,
   pickAndroidFolder,
+  persistAndroidLibrary,
+  restoreFilesForLibrary,
 } from "@/lib/native/folder-picker";
 
 export const Route = createFileRoute("/")({
@@ -113,7 +115,7 @@ function Home() {
         setProgress(null);
         return;
       }
-      await importFiles(result.files);
+      await importFiles(result.files, result.treeUri);
       return;
     }
     if (isFsAccessSupported()) {
@@ -167,7 +169,7 @@ function Home() {
     await importFiles(files);
   }
 
-  async function importFiles(files: File[]) {
+  async function importFiles(files: File[], androidTreeUri?: string) {
     setProgress({ phase: "scan", scanned: 0, total: files.length });
     try {
       const { library: lib, files: fileEntries } = await buildLibraryFromFiles(
@@ -183,6 +185,9 @@ function Home() {
       }
       resetAnalysis();
       await setLibrary(lib);
+      if (androidTreeUri) {
+        await persistAndroidLibrary(lib.id, androidTreeUri, lib.name);
+      }
       setFiles(fileEntries);
       setProgress({ phase: "done", scanned: lib.tracks.length, total: lib.tracks.length });
       toast.success(`${lib.tracks.length.toLocaleString()} morceaux importés`, {
@@ -203,7 +208,13 @@ function Home() {
   }
 
   async function openLast() {
-    if (await restoreLast()) navigate({ to: "/workspace" });
+    if (await restoreLast()) {
+      const lib = useLibraryStore.getState().library;
+      if (lib && isCapacitorAndroid()) {
+        await restoreFilesForLibrary(lib);
+      }
+      navigate({ to: "/workspace" });
+    }
   }
 
   const hasRecent = hydrated && !!lastMeta;

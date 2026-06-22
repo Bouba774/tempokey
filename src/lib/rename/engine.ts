@@ -13,6 +13,13 @@ import {
   type RenameOperation,
 } from "./history";
 import type { RenamePreviewItem } from "./templates";
+import {
+  FolderPicker,
+  getSafUri,
+  isCapacitorAndroid,
+  safFileFromMeta,
+  type SafFileMeta,
+} from "@/lib/native/folder-picker";
 
 export interface ApplyProgress {
   done: number;
@@ -31,6 +38,89 @@ function stripExt(name: string): string {
   return i > 0 ? name.slice(0, i) : name;
 }
 
+function replaceLastSegment(p: string, newName: string): string {
+  const i = p.lastIndexOf("/");
+  return i < 0 ? newName : `${p.slice(0, i)}/${newName}`;
+}
+
+async function applyRenameAndroid(
+  template: string,
+  items: RenamePreviewItem[],
+  onProgress?: (p: ApplyProgress) => void,
+): Promise<ApplyResult> {
+  const lib = useLibraryStore.getState().library;
+  if (!lib) throw new Error("Aucune bibliothèque active");
+  const store = useLibraryStore.getState();
+
+  const applied: RenameChange[] = [];
+  const failed: ApplyResult["failed"] = [];
+
+  let done = 0;
+  for (const item of items) {
+    onProgress?.({ done, total: items.length, current: item.oldName });
+    const file = store.getFile(item.trackId);
+    const uri = getSafUri(file);
+    if (!uri || !file) {
+      failed.push({ item, reason: "Fichier introuvable" });
+      done++;
+      continue;
+    }
+    try {
+      const { uri: newUri } = await FolderPicker.renameDocument({
+        uri,
+        newName: item.newName,
+      });
+      // Refresh in-memory File handle so subsequent ops (incl. undo) work.
+      const meta = (file as unknown as { __safMeta?: SafFileMeta }).__safMeta;
+      if (meta) {
+        const updated: SafFileMeta = {
+          ...meta,
+          uri: newUri,
+          name: item.newName,
+          relativePath: replaceLastSegment(meta.relativePath, item.newName),
+        };
+        store.setFiles([
+          { trackId: item.trackId, file: safFileFromMeta(updated) },
+        ]);
+      }
+      store.updateTrack(item.trackId, {
+        fileName: item.newName,
+        filePath: item.newPath,
+        title: stripExt(item.newName),
+      });
+      applied.push({
+        trackId: item.trackId,
+        oldPath: item.oldPath,
+        newPath: item.newPath,
+        oldName: item.oldName,
+        newName: item.newName,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Renommage refusé";
+      failed.push({ item, reason: msg });
+    }
+    done++;
+    onProgress?.({ done, total: items.length, current: item.newName });
+  }
+
+  await useLibraryStore.getState().flush();
+
+  let operationId: string | null = null;
+  if (applied.length > 0) {
+    const op: RenameOperation = {
+      id: `op_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+      libraryId: lib.id,
+      libraryName: lib.name,
+      template,
+      at: Date.now(),
+      changes: applied,
+    };
+    await pushOperation(op);
+    operationId = op.id;
+  }
+  return { applied, failed, operationId };
+}
+
 /**
  * Apply a previewed rename batch to the local filesystem and synchronise the library.
  * Aborts cleanly on permission denial; per-file failures are reported but do not stop the batch.
@@ -47,6 +137,10 @@ export async function applyRename(
 
   const lib = useLibraryStore.getState().library;
   if (!lib) throw new Error("Aucune bibliothèque active");
+
+  if (isCapacitorAndroid()) {
+    return applyRenameAndroid(template, changes, onProgress);
+  }
 
   const root = await loadDirectoryHandle(lib.id);
   if (!root) throw new Error("Aucun accès au dossier — autorisez l'accès au dossier d'abord.");
@@ -125,6 +219,23 @@ export async function undoOperation(opId: string, onProgress?: (p: ApplyProgress
   const op = list.find((o) => o.id === opId);
   if (!op) throw new Error("Opération introuvable");
   if (op.undone) throw new Error("Opération déjà annulée");
+
+  if (isCapacitorAndroid()) {
+    const reverseItems: RenamePreviewItem[] = op.changes.map((c) => ({
+      trackId: c.trackId,
+      oldName: c.newName,
+      cleanedName: c.newName,
+      newName: c.oldName,
+      oldPath: c.newPath,
+      newPath: c.oldPath,
+      unchanged: false,
+      conflict: false,
+      duplicate: false,
+    }));
+    const res = await applyRenameAndroid(op.template, reverseItems, onProgress);
+    await markUndone(op.id);
+    return { ...res, operationId: op.id };
+  }
 
   const lib = useLibraryStore.getState().library;
   const root = lib ? await loadDirectoryHandle(lib.id) : null;
