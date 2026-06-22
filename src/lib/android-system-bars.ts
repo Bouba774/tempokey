@@ -19,18 +19,34 @@
  *   2. After the Capacitor splash hides.
  *   3. On every theme flip (light ⇄ dark).
  *   4. When the app returns to foreground (`appStateChange` → isActive).
+ *
+ * Note: Capacitor plugin packages (`@capacitor/status-bar`, `@capacitor/app`,
+ * `@capacitor/splash-screen`) are installed only by `prepare-android.sh` and
+ * are NOT listed in `package.json`, so we resolve them via dynamic
+ * string-indirection to avoid TypeScript build failures on web.
  */
+
+// Helper that hides the import specifier from TypeScript's module resolver.
+async function loadOptional<T = unknown>(spec: string): Promise<T | null> {
+  try {
+    // The `/* @vite-ignore */` keeps Vite from trying to pre-bundle the
+    // package on the web build where it is absent.
+    return (await import(/* @vite-ignore */ spec)) as T;
+  } catch {
+    return null;
+  }
+}
 
 let installed = false;
 
 export async function syncAndroidSystemBars(): Promise<void> {
   if (typeof document === "undefined") return;
   try {
-    const cap = await import("@capacitor/core").catch(() => null);
+    const cap = await loadOptional<any>("@capacitor/core");
     if (!cap?.Capacitor?.isNativePlatform?.()) return;
     if (cap.Capacitor.getPlatform() !== "android") return;
 
-    const sb = await import("@capacitor/status-bar").catch(() => null);
+    const sb = await loadOptional<any>("@capacitor/status-bar");
     if (!sb?.StatusBar) return;
 
     const isDark = document.documentElement.classList.contains("dark");
@@ -93,15 +109,18 @@ export async function installAndroidSystemBarsSync(): Promise<void> {
 
   // 3. App resume.
   try {
-    const appMod = await import("@capacitor/app").catch(() => null);
-    appMod?.App?.addListener?.("appStateChange", ({ isActive }) => {
-      if (isActive) void syncAndroidSystemBars();
-    }).catch(() => {});
+    const appMod = await loadOptional<any>("@capacitor/app");
+    appMod?.App?.addListener?.(
+      "appStateChange",
+      ({ isActive }: { isActive: boolean }) => {
+        if (isActive) void syncAndroidSystemBars();
+      },
+    ).catch?.(() => {});
   } catch {}
 
   // 4. After the splash hides.
   try {
-    const splash = await import("@capacitor/splash-screen").catch(() => null);
+    const splash = await loadOptional<any>("@capacitor/splash-screen");
     if (splash?.SplashScreen?.hide) {
       await splash.SplashScreen.hide().catch(() => {});
       // Re-sync after the native splash window is torn down.
