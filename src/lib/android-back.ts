@@ -33,7 +33,10 @@ type CapacitorAppModule = {
 };
 type CapacitorKeyboardModule = {
   Keyboard?: {
-    addListener?: (eventName: "keyboardWillShow" | "keyboardWillHide", listenerFunc: () => void) => ListenerResult;
+    addListener?: (
+      eventName: "keyboardWillShow" | "keyboardWillHide",
+      listenerFunc: () => void,
+    ) => ListenerResult;
     hide?: () => Promise<void>;
   };
 };
@@ -124,7 +127,6 @@ export async function initAndroidBack(): Promise<void> {
 
   appMod?.App?.addListener?.("backButton", async ({ canGoBack }: { canGoBack: boolean }) => {
     try {
-      // eslint-disable-next-line no-console
       console.log("[TempoKey] BACK_BUTTON_RECEIVED", {
         canGoBack: !!canGoBack,
         handlers: stack.length,
@@ -151,7 +153,6 @@ export async function initAndroidBack(): Promise<void> {
       // c) Fallbacks.
       await defaultBack(!!canGoBack);
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error("[TempoKey] backButton handler failed", err);
     }
   }).catch?.(() => {});
