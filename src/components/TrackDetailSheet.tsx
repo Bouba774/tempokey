@@ -34,7 +34,7 @@ export function TrackDetailSheet({
   onClose: () => void;
 }) {
   const track = useLibraryStore((s) =>
-    trackId ? s.library?.tracks.find((t) => t.id === trackId) ?? null : null,
+    trackId ? (s.library?.tracks.find((t) => t.id === trackId) ?? null) : null,
   );
   const reanalyze = useAnalysisStore((s) => s.reanalyzeIds);
   const running = useAnalysisStore((s) => s.running);
@@ -58,20 +58,19 @@ export function TrackDetailSheet({
   // Android hardware back button closes the sheet first (LIFO, highest
   // priority while the sheet is open) before any other back behavior.
   useBackHandler(open, () => {
-    // eslint-disable-next-line no-console
-    console.log("[TempoKey] SHEET_CLOSE", { component: "TrackDetailSheet", reason: "android-back" });
+    console.log("[TempoKey] SHEET_CLOSE", {
+      component: "TrackDetailSheet",
+      reason: "android-back",
+    });
     onClose();
     return true;
   });
 
   useEffect(() => {
     if (!open) return;
-    // eslint-disable-next-line no-console
     console.log("[TempoKey] SHEET_OPEN", { component: "TrackDetailSheet" });
     return () => {
-      // eslint-disable-next-line no-console
       console.log("[TempoKey] OVERLAY_REMOVED", { component: "TrackDetailSheet" });
-      // eslint-disable-next-line no-console
       console.log("[TempoKey] FOCUS_RELEASED", { component: "TrackDetailSheet" });
     };
   }, [open]);
@@ -93,7 +92,10 @@ export function TrackDetailSheet({
   }
 
   return (
-    <div data-tempokey-overlay className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/60 backdrop-blur-sm">
+    <div
+      data-tempokey-overlay
+      className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/60 backdrop-blur-sm"
+    >
       <button aria-label="Fermer" onClick={onClose} className="flex-1" />
       <section
         data-tempokey-sheet
@@ -107,12 +109,8 @@ export function TrackDetailSheet({
         </h2>
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <div className="truncate text-base font-semibold text-foreground">
-              {track.title}
-            </div>
-            <div className="mt-0.5 truncate text-xs text-muted-foreground">
-              {track.fileName}
-            </div>
+            <div className="truncate text-base font-semibold text-foreground">{track.title}</div>
+            <div className="mt-0.5 truncate text-xs text-muted-foreground">{track.fileName}</div>
           </div>
           <button
             onClick={onClose}
