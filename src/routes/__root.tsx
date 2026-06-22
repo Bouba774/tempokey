@@ -10,6 +10,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { FloatingPlayer } from "@/components/FloatingPlayer";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useThemeStore } from "@/lib/theme-store";
 
 import appCss from "../styles.css?url";
@@ -143,7 +144,9 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <ErrorBoundary>
+        <Outlet />
+      </ErrorBoundary>
       <FloatingPlayer />
       <Toaster position="top-center" richColors closeButton theme={resolved} />
     </QueryClientProvider>

@@ -50,10 +50,17 @@ export function RenamePanel() {
     return tracks;
   }, [tracks, selectedIds, scope]);
 
-  const preview = useMemo(
-    () => (step === "preview" ? buildPreview(template, customFormat, scopedTracks, { cleanPrefixes }) : null),
-    [step, template, customFormat, scopedTracks, cleanPrefixes],
-  );
+  const preview = useMemo(() => {
+    if (step !== "preview") return null;
+    try {
+      return buildPreview(template, customFormat, scopedTracks, { cleanPrefixes });
+    } catch (e) {
+      // Don't freeze the panel if the user types an invalid template.
+      // eslint-disable-next-line no-console
+      console.error("[TempoKey] buildPreview failed", e);
+      return null;
+    }
+  }, [step, template, customFormat, scopedTracks, cleanPrefixes]);
 
   async function runApply() {
     if (!preview) return;
