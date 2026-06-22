@@ -84,27 +84,56 @@ function dispatchEscape() {
   (document.activeElement ?? document.body).dispatchEvent(ev);
 }
 
-async function defaultBack(canGoBack: boolean): Promise<void> {
-  // 1) Open overlay → close it via Escape (Radix handles all primitives).
+/**
+ * Hash-history aware "are we on the home route?" check.
+ *
+ * The Android WebView ships with `window.history.length > 1` from the moment
+ * the SPA boots (Capacitor's initial navigation counts as an entry, and any
+ * in-app hash change adds another). Using `history.length` as a "can we go
+ * back?" signal meant the home route NEVER triggered exitApp — pressing
+ * Back on `#/` just popped a stale entry and the user was stuck.
+ *
+ * Source of truth = the hash route. Anything that is not `#/` (or empty) is
+ * a secondary screen and must `history.back()`. `#/` is the home route and
+ * must show the exit prompt.
+ */
+function isAtHomeRoute(): boolean {
+  const raw = (window.location.hash || "").split("?")[0].split("#").pop() || "";
+  const path = raw.startsWith("/") ? raw : `/${raw}`;
+  return path === "/" || path === "";
+}
+
+async function defaultBack(_canGoBack: boolean): Promise<void> {
+  // 1) Open Radix overlay → close it via Escape (Radix handles all primitives).
+  //    Component-scoped sheets/panels are already drained by the handler stack
+  //    before we get here; this only catches stray Radix portals.
   if (hasOpenRadixOverlay()) {
     dispatchEscape();
     return;
   }
-  // 2) Router history → back.
-  if (canGoBack && window.history.length > 1) {
+  // 2) Secondary route → pop one entry. We deliberately ignore Capacitor's
+  //    `canGoBack` and `window.history.length`: both are unreliable in the
+  //    hash-history WebView (see isAtHomeRoute() comment).
+  if (!isAtHomeRoute()) {
     window.history.back();
     return;
   }
-  // 3) Root → double-press to exit.
+  // 3) Home route → double-press to exit.
   const now = Date.now();
   if (now - lastExitPromptAt < 2000) {
+    lastExitPromptAt = 0;
     const cap = (await safeImport("@capacitor/app")) as CapacitorAppModule | null;
-    cap?.App?.exitApp?.().catch?.(() => {});
+    try {
+      await cap?.App?.exitApp?.();
+    } catch {
+      /* exitApp can reject if the activity is already finishing */
+    }
     return;
   }
   lastExitPromptAt = now;
   toast("Appuyez encore une fois pour quitter TempoKey", { duration: 2000 });
 }
+
 
 export async function initAndroidBack(): Promise<void> {
   if (initialised) return;
