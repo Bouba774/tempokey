@@ -13,6 +13,7 @@ import { AnalysisPanel } from "@/components/AnalysisPanel";
 import { RenamePanel } from "@/components/RenamePanel";
 import { DuplicatesPanel } from "@/components/DuplicatesPanel";
 import { LibraryContextCard } from "@/components/LibraryContextCard";
+import { PanelErrorBoundary } from "@/components/PanelErrorBoundary";
 
 export const Route = createFileRoute("/workspace")({
   head: () => ({ meta: [{ title: "Workspace — TempoKey" }] }),
@@ -118,10 +119,12 @@ function Workspace() {
         })}
       </div>
       <div key={tab} className="flex flex-1 flex-col min-h-0 animate-in fade-in-50 duration-200">
-        {tab === "library" && <TrackList />}
-        {tab === "analysis" && <AnalysisPanel />}
-        {tab === "duplicates" && <DuplicatesPanel />}
-        {tab === "rename" && <RenamePanel />}
+        <PanelErrorBoundary name={`panel:${tab}`}>
+          {tab === "library" && <TrackList />}
+          {tab === "analysis" && <AnalysisPanel />}
+          {tab === "duplicates" && <DuplicatesPanel />}
+          {tab === "rename" && <RenamePanel />}
+        </PanelErrorBoundary>
       </div>
     </div>
   );
