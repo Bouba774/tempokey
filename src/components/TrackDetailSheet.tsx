@@ -63,6 +63,23 @@ export function TrackDetailSheet({
     return true;
   });
 
+  // Safety net for Android WebView: Radix Dialog sometimes leaves
+  // `pointer-events: none` and `overflow: hidden` on <body> if the close
+  // animation is interrupted by a fast tap. That makes the whole UI feel
+  // frozen ("impossible de fermer la fenêtre"). When this sheet is closed,
+  // force-clear those styles on the next frame.
+  useEffect(() => {
+    if (open) return;
+    const id = requestAnimationFrame(() => {
+      const b = document.body;
+      if (!b) return;
+      if (b.style.pointerEvents === "none") b.style.pointerEvents = "";
+      if (b.style.overflow === "hidden") b.style.overflow = "";
+      b.removeAttribute("data-scroll-locked");
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open]);
+
   if (!open) return null;
 
   const bpmConf = confidenceLabel(track.bpmConfidence);
