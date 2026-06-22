@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { FloatingPlayer } from "@/components/FloatingPlayer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AndroidOverlayAudit } from "@/components/AndroidOverlayAudit";
 import { useThemeStore } from "@/lib/theme-store";
 
 import appCss from "../styles.css?url";
@@ -148,6 +149,7 @@ function RootComponent() {
         <Outlet />
       </ErrorBoundary>
       <FloatingPlayer />
+      <AndroidOverlayAudit />
       <Toaster position="top-center" richColors closeButton theme={resolved} />
     </QueryClientProvider>
   );
