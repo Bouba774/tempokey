@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   X,
   Lock,
@@ -63,23 +62,6 @@ export function TrackDetailSheet({
     return true;
   });
 
-  // Safety net for Android WebView: Radix Dialog sometimes leaves
-  // `pointer-events: none` and `overflow: hidden` on <body> if the close
-  // animation is interrupted by a fast tap. That makes the whole UI feel
-  // frozen ("impossible de fermer la fenêtre"). When this sheet is closed,
-  // force-clear those styles on the next frame.
-  useEffect(() => {
-    if (open) return;
-    const id = requestAnimationFrame(() => {
-      const b = document.body;
-      if (!b) return;
-      if (b.style.pointerEvents === "none") b.style.pointerEvents = "";
-      if (b.style.overflow === "hidden") b.style.overflow = "";
-      b.removeAttribute("data-scroll-locked");
-    });
-    return () => cancelAnimationFrame(id);
-  }, [open]);
-
   if (!open) return null;
 
   const bpmConf = confidenceLabel(track.bpmConfidence);
@@ -97,23 +79,17 @@ export function TrackDetailSheet({
   }
 
   return (
-    <DialogPrimitive.Root
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) onClose();
-      }}
-    >
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay
-          className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0"
-        />
-        <DialogPrimitive.Content
-          aria-describedby={undefined}
-          className="fixed inset-x-0 bottom-0 z-[60] mx-auto w-full max-w-2xl rounded-t-3xl border border-border bg-[var(--surface-elevated)] p-4 pb-[max(env(safe-area-inset-bottom,0px),16px)] shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom"
-        >
-          <DialogPrimitive.Title className="sr-only">
-            Détails du morceau
-          </DialogPrimitive.Title>
+    <div className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/60 backdrop-blur-sm">
+      <button aria-label="Fermer" onClick={onClose} className="flex-1" />
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="track-detail-title"
+        className="mx-auto w-full max-w-2xl rounded-t-3xl border border-border bg-[var(--surface-elevated)] p-4 pb-[max(env(safe-area-inset-bottom,0px),16px)] shadow-2xl outline-none animate-in slide-in-from-bottom fade-in-0"
+      >
+        <h2 id="track-detail-title" className="sr-only">
+          Détails du morceau
+        </h2>
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="truncate text-base font-semibold text-foreground">
@@ -123,12 +99,13 @@ export function TrackDetailSheet({
               {track.fileName}
             </div>
           </div>
-          <DialogPrimitive.Close
+          <button
+            onClick={onClose}
             aria-label="Fermer"
             className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
           >
             <X className="h-4 w-4" />
-          </DialogPrimitive.Close>
+          </button>
         </div>
 
         {track.suspect && (
@@ -332,8 +309,7 @@ export function TrackDetailSheet({
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
           Les valeurs verrouillées ne sont jamais remplacées par une nouvelle analyse.
         </p>
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+      </section>
+    </div>
   );
 }
