@@ -26,10 +26,8 @@ let lastExitPromptAt = 0;
 // Hide Capacitor module specifiers from the web bundler (rolldown). The
 // packages are only installed during the Android build pipeline; on the web
 // these resolve to `null` and the whole module is a no-op.
-const dynImport = (name: string): Promise<any> =>
-  (0, eval)(`import(${JSON.stringify(name)})`);
-const safeImport = (name: string): Promise<any> =>
-  dynImport(name).catch(() => null);
+const dynImport = (name: string): Promise<unknown> => (0, eval)(`import(${JSON.stringify(name)})`);
+const safeImport = (name: string): Promise<unknown> => dynImport(name).catch(() => null);
 
 export function pushBackHandler(handler: BackHandler): () => void {
   stack.push(handler);
