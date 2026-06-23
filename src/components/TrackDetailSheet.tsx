@@ -96,13 +96,14 @@ export function TrackDetailSheet({
       data-tempokey-overlay
       className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/60 backdrop-blur-sm"
     >
-      <button aria-label="Fermer" onClick={onClose} className="flex-1" />
+      <button aria-label="Fermer" onClick={onClose} className="flex-1 min-h-0" />
       <section
         data-tempokey-sheet
         role="dialog"
         aria-modal="true"
         aria-labelledby="track-detail-title"
-        className="mx-auto w-full max-w-2xl rounded-t-3xl border border-border bg-[var(--surface-elevated)] p-4 pb-[max(env(safe-area-inset-bottom,0px),16px)] shadow-2xl outline-none animate-in slide-in-from-bottom fade-in-0"
+        className="mx-auto w-full max-w-2xl max-h-[85vh] overflow-y-auto overscroll-contain rounded-t-3xl border border-border bg-[var(--surface-elevated)] p-4 pb-[max(env(safe-area-inset-bottom,0px),16px)] shadow-2xl outline-none animate-in slide-in-from-bottom fade-in-0"
+        style={{ WebkitOverflowScrolling: "touch" }}
       >
         <h2 id="track-detail-title" className="sr-only">
           Détails du morceau

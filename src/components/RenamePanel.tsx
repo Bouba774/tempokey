@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   CheckCheck,
@@ -50,17 +50,23 @@ export function RenamePanel() {
     return tracks;
   }, [tracks, selectedIds, scope]);
 
+  // Defer template + custom-format inputs so fast typing never blocks the
+  // keystroke loop while buildPreview iterates the full library.
+  const deferredTemplate = useDeferredValue(template);
+  const deferredCustomFormat = useDeferredValue(customFormat);
+  const deferredCleanPrefixes = useDeferredValue(cleanPrefixes);
+
   const preview = useMemo(() => {
     if (step !== "preview") return null;
     try {
-      return buildPreview(template, customFormat, scopedTracks, { cleanPrefixes });
+      return buildPreview(deferredTemplate, deferredCustomFormat, scopedTracks, { cleanPrefixes: deferredCleanPrefixes });
     } catch (e) {
       // Don't freeze the panel if the user types an invalid template.
       // eslint-disable-next-line no-console
       console.error("[TempoKey] buildPreview failed", e);
       return null;
     }
-  }, [step, template, customFormat, scopedTracks, cleanPrefixes]);
+  }, [step, deferredTemplate, deferredCustomFormat, scopedTracks, deferredCleanPrefixes]);
 
   async function runApply() {
     if (!preview) return;
